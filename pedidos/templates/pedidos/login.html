@@ -1,18 +1,70 @@
-{% extends "pedidos/base.html" %}
-{% block title %}Iniciar sesión · OrderFlow{% endblock %}
-{% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h1 class="h4 mb-3">Iniciar sesión</h1>
-        <form method="post">
-          {% csrf_token %}
-          {{ form.as_p }}
-          <button class="btn btn-primary w-100" type="submit">Entrar</button>
-        </form>
-      </div>
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión · OrderFlow</title>
+  <link href="{% static 'pedidos/css/tokens.css' %}" rel="stylesheet">
+  <link href="{% static 'pedidos/css/bundle.css' %}" rel="stylesheet">
+  <link href="{% static 'pedidos/css/orderflow.css' %}" rel="stylesheet">
+</head>
+<body class="of">
+{% include "pedidos/_icons.html" %}
+<div class="of-login">
+  <aside class="of-login-aside">
+    <a class="of-brand" href="{% url 'login' %}" style="padding:0">
+      <span class="of-brand-mark"><svg class="of-ico"><use href="#i-flow"/></svg></span>OrderFlow
+    </a>
+    <div>
+      <h2>Del pedido a la recepción.</h2>
+      <p>Gestiona tus órdenes de compra y verifica cada entrega en almacén, sin hojas de cálculo.</p>
+      <ul class="of-login-points">
+        <li><svg class="of-ico"><use href="#i-doc"/></svg>Órdenes de compra autorizadas y enviadas al proveedor</li>
+        <li><svg class="of-ico"><use href="#i-inbox"/></svg>Recepción verificada línea a línea, OK o NG</li>
+        <li><svg class="of-ico"><use href="#i-alert"/></svg>Incidencias gestionadas hasta su resolución</li>
+      </ul>
     </div>
-  </div>
+    <span style="color:var(--nav-muted);font-size:12px">Proyecto intermodular DAM · 2026</span>
+  </aside>
+
+  <main class="of-login-main">
+    <div class="of-login-card">
+      <div class="of-brand of-login-mobile-brand" style="padding:0;color:var(--ink)">
+        <span class="of-brand-mark"><svg class="of-ico"><use href="#i-flow"/></svg></span>OrderFlow
+      </div>
+      <h1>Iniciar sesión</h1>
+      <p class="of-muted" style="margin:0">Accede con tu usuario de OrderFlow.</p>
+
+      <form method="post" class="of-form" novalidate>
+        {% csrf_token %}
+        {% if form.errors %}
+        <div class="of-alert of-alert-error" role="alert">
+          <svg class="of-ico"><use href="#i-alert"/></svg>
+          <div><b>No se ha podido iniciar sesión</b>Usuario o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.</div>
+        </div>
+        {% endif %}
+
+        <div class="of-field{% if form.errors %} is-invalid{% endif %}">
+          <label class="of-label" for="id_username">Usuario</label>
+          <div class="of-input-icon">
+            <svg class="of-ico"><use href="#i-user"/></svg>
+            <input class="of-input" type="text" name="username" id="id_username" autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}">
+          </div>
+        </div>
+
+        <div class="of-field{% if form.errors %} is-invalid{% endif %}">
+          <label class="of-label" for="id_password">Contraseña</label>
+          <div class="of-input-icon">
+            <svg class="of-ico"><use href="#i-lock"/></svg>
+            <input class="of-input" type="password" name="password" id="id_password" autocomplete="current-password" required>
+          </div>
+        </div>
+
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="of-btn of-btn-primary of-btn-block">Entrar</button>
+      </form>
+    </div>
+  </main>
 </div>
-{% endblock %}
+</body>
+</html>

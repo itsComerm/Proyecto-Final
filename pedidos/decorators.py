@@ -11,7 +11,7 @@ def rol_requerido(*roles):
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect_to_login(request.get_full_path())
-            if request.user.groups.filter(name__in=roles).exists():
+            if request.user.is_superuser or request.user.groups.filter(name__in=roles).exists():
                 return view_func(request, *args, **kwargs)
             raise PermissionDenied
         return wrapper

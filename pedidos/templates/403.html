@@ -1,0 +1,17 @@
+{% extends "pedidos/base.html" %}
+{% block title %}Acceso denegado{% endblock %}
+{% block content %}
+  <section class="of-card of-state" role="alert">
+    <div class="of-state-icon of-tone-incident"><svg class="of-ico"><use href="#i-lock"/></svg></div>
+    <span class="of-state-code">ERROR 403</span>
+    <h1>No tienes permiso para ver esta página</h1>
+    <p>
+      {% if rol_actual %}Tu rol actual es <b>{{ rol_actual }}</b> y no incluye acceso a esta sección.{% else %}Tu cuenta no tiene acceso a esta sección.{% endif %}
+      Si crees que es un error, contacta con el administrador.
+    </p>
+    <div class="of-actions">
+      <a class="of-btn" href="javascript:history.back()"><svg class="of-ico of-ico-sm"><use href="#i-back"/></svg>Volver atrás</a>
+      {% if user.is_authenticated %}<a class="of-btn of-btn-primary" href="{% url 'inicio' %}">Ir a mi panel</a>{% endif %}
+    </div>
+  </section>
+{% endblock %}

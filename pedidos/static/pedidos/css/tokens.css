@@ -1,0 +1,84 @@
+/* OrderFlow — generado desde tokens.json */
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-sunken: #f0f3f7;
+  --border: #e2e7ee;
+  --border-strong: #7b8699;
+  --ink: #0f172a;
+  --ink-muted: #566276;
+  --nav: #0d1526;
+  --nav-ink: #c3ccda;
+  --nav-muted: #8491a7;
+  --nav-hover: #1a2438;
+  --nav-active: #ffffff;
+  --nav-active-ink: #0d1526;
+  --primary: #2456d6;
+  --on-primary: #ffffff;
+  --primary-soft: #e9effd;
+  --focus: #2456d6;
+  --st-draft: #475569;
+  --st-draft-bg: #eef1f5;
+  --st-approved: #4338ca;
+  --st-approved-bg: #eeecfd;
+  --st-transit: #9a4a00;
+  --st-transit-bg: #fdf1e1;
+  --st-received: #157044;
+  --st-received-bg: #e4f5ec;
+  --st-incident: #b42318;
+  --st-incident-bg: #fdeceb;
+  --urgent: #c2410c;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 40px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+  --control-height: 40px;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-pop: 0 12px 32px rgba(15, 23, 42, 0.14);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a101d;
+    --surface: #111a2c;
+    --surface-sunken: #0d1526;
+    --border: #23304a;
+    --border-strong: #64738d;
+    --ink: #e8edf5;
+    --ink-muted: #9ba7ba;
+    --nav: #060b16;
+    --nav-ink: #b7c1d1;
+    --nav-muted: #76849b;
+    --nav-hover: #121b2e;
+    --nav-active: #e8edf5;
+    --nav-active-ink: #0a101d;
+    --primary: #7299ff;
+    --on-primary: #0a101d;
+    --primary-soft: #18264a;
+    --focus: #8fb0ff;
+    --st-draft: #b0bccd;
+    --st-draft-bg: #1c2639;
+    --st-approved: #aaa6ff;
+    --st-approved-bg: #231f4f;
+    --st-transit: #f5b567;
+    --st-transit-bg: #3a2710;
+    --st-received: #72d8a3;
+    --st-received-bg: #10321f;
+    --st-incident: #ff8f86;
+    --st-incident-bg: #3d1614;
+    --urgent: #ff9c66;
+    --shadow-card: none;
+    --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
