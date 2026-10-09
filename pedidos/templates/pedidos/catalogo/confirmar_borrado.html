@@ -1,0 +1,14 @@
+{% extends "pedidos/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+  <section class="of-card of-state" role="alertdialog">
+    <div class="of-state-icon of-tone-incident"><svg class="of-ico"><use href="#i-trash"/></svg></div>
+    <h1>¿Eliminar «{{ object }}»?</h1>
+    <p>Esta acción no se puede deshacer.</p>
+    <form method="post" class="of-actions">
+      {% csrf_token %}
+      <a class="of-btn" href="{{ url_lista }}">Cancelar</a>
+      <button type="submit" class="of-btn of-btn-ng">Sí, eliminar</button>
+    </form>
+  </section>
+{% endblock %}

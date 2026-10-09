@@ -1,0 +1,27 @@
+<p class="of-page-sub">
+  {% if hay_filtros %}{{ productos|length }} resultado{{ productos|length|pluralize }} con los filtros aplicados.
+  {% else %}{{ productos|length }} producto{{ productos|length|pluralize }} en el catálogo. Cada producto pertenece a un único proveedor.{% endif %}
+</p>
+
+<div class="of-card" style="overflow-x:auto">
+  <table class="of-table">
+    <thead><tr><th>Producto</th><th>Proveedor</th><th></th></tr></thead>
+    <tbody>
+      {% for p in productos %}
+      <tr>
+        <td><b>{{ p.nombre }}</b></td>
+        <td>{{ p.proveedor.nombre }}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <a class="of-btn of-btn-sm" href="{% url 'producto_editar' p.pk %}"><svg class="of-ico of-ico-sm"><use href="#i-edit"/></svg>Editar</a>
+          <a class="of-btn of-btn-sm of-btn-ghost" href="{% url 'producto_eliminar' p.pk %}"><svg class="of-ico of-ico-sm"><use href="#i-trash"/></svg>Eliminar</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="of-muted" style="padding:40px;text-align:center">
+        {% if hay_filtros %}Ningún producto coincide con la búsqueda. Prueba con otro nombre o limpia los filtros.
+        {% else %}Todavía no hay productos. Crea primero un proveedor y después añade sus productos.{% endif %}
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

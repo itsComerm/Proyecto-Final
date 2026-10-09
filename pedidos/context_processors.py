@@ -17,12 +17,12 @@ MENU = [
         ("Incidencias", "alert", None, {"Administrador", "Compras", "Almacén"}),
     ]),
     ("Catálogo", [
-        ("Productos", "box", None, {"Administrador", "Compras"}),
-        ("Proveedores", "building", None, {"Administrador", "Compras"}),
+        ("Productos", "box", "producto_lista", {"Administrador", "Compras"}),
+        ("Proveedores", "building", "proveedor_lista", {"Administrador", "Compras"}),
     ]),
     ("Sistema", [
         ("Actividad", "pulse", None, {"Administrador"}),
-        ("Usuarios y roles", "users", None, {"Administrador"}),
+        ("Usuarios y roles", "users", "admin:index", {"Administrador"}),
     ]),
 ]
 
@@ -57,7 +57,7 @@ def navegacion(request):
                 "etiqueta": etiqueta,
                 "icono": icono,
                 "url": reverse(nombre) if nombre else None,
-                "activo": nombre is not None and nombre == actual,
+                "activo": nombre is not None and actual is not None and nombre.split("_")[0] == actual.split("_")[0],
             })
         if elementos:
             grupos.append({"titulo": titulo, "items": elementos})

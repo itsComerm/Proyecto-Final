@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.functions import Lower
 
 
 class UnidadMedida(models.Model):
@@ -31,6 +32,15 @@ class Producto(models.Model):
     proveedor = models.ForeignKey(
         Proveedor, on_delete=models.PROTECT, related_name="productos"
     )
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("nombre"),
+                "proveedor",
+                name="producto_unico_por_proveedor",
+                violation_error_message="Este proveedor ya tiene un producto con ese nombre.",
+            )
+        ]
 
     def __str__(self):
         return f"{self.nombre} ({self.proveedor})"

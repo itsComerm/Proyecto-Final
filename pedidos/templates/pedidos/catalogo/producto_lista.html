@@ -1,0 +1,66 @@
+{% extends "pedidos/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <h1 class="of-page-title mb-0">{{ titulo }}</h1>
+    <a class="of-btn of-btn-primary" href="{% url 'producto_nuevo' %}"><svg class="of-ico of-ico-sm"><use href="#i-plus"/></svg>Nuevo producto</a>
+  </div>
+
+  <form method="get" id="filtros" class="d-flex flex-wrap align-items-end gap-3 mb-3" role="search">
+    <div class="of-field" style="flex:1 1 260px">
+      <label class="of-label" for="q">Buscar producto</label>
+      <div class="of-input-icon">
+        <svg class="of-ico"><use href="#i-search"/></svg>
+        <input class="of-input" type="search" id="q" name="q" value="{{ q }}" placeholder="Nombre del producto" autocomplete="off">
+      </div>
+    </div>
+    <div class="of-field" style="flex:0 1 280px">
+      <label class="of-label" for="proveedor">Proveedor</label>
+      <select class="of-select" id="proveedor" name="proveedor">
+        <option value="">Todos los proveedores</option>
+        {% for p in lista_proveedores %}
+          <option value="{{ p.pk }}"{% if proveedor_sel == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <a class="of-btn" href="{% url 'producto_lista' %}">Limpiar</a>
+  </form>
+
+  <div id="resultados" aria-live="polite">
+    {% include "pedidos/catalogo/_producto_resultados.html" %}
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById("filtros");
+      var zona = document.getElementById("resultados");
+      var temporizador, controlador;
+
+      function buscar() {
+        var params = new URLSearchParams(new FormData(form));
+        Array.from(params.keys()).forEach(function (k) { if (!params.get(k)) params.delete(k); });
+        var consulta = params.toString();
+        var pagina = window.location.pathname + (consulta ? "?" + consulta : "");
+
+        if (controlador) controlador.abort();          // cancela la petición anterior
+        controlador = new AbortController();
+        params.set("parcial", "1");
+
+        fetch(window.location.pathname + "?" + params.toString(), { signal: controlador.signal })
+          .then(function (r) { return r.text(); })
+          .then(function (html) {
+            zona.innerHTML = html;
+            history.replaceState(null, "", pagina);    // la URL refleja el filtro
+          })
+          .catch(function (e) { if (e.name !== "AbortError") console.error(e); });
+      }
+
+      form.addEventListener("input", function () {     // espera 250 ms tras la última tecla
+        clearTimeout(temporizador);
+        temporizador = setTimeout(buscar, 250);
+      });
+      form.addEventListener("change", buscar);         // el desplegable actúa al instante
+      form.addEventListener("submit", function (e) { e.preventDefault(); buscar(); });
+    })();
+  </script>
+{% endblock %}

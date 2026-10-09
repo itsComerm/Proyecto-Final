@@ -1,0 +1,36 @@
+{% extends "pedidos/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="of-page-title">{{ titulo }}</h1>
+      <p class="of-page-sub mb-0">{{ proveedores|length }} proveedor{{ proveedores|length|pluralize:"es" }} en el catálogo.</p>
+    </div>
+    <a class="of-btn of-btn-primary" href="{% url 'proveedor_nuevo' %}"><svg class="of-ico of-ico-sm"><use href="#i-plus"/></svg>Nuevo proveedor</a>
+  </div>
+
+  <div class="of-card" style="overflow-x:auto">
+    <table class="of-table">
+      <thead>
+        <tr><th>Proveedor</th><th>CIF</th><th>Email</th><th>Teléfono</th><th class="of-num">Productos</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for p in proveedores %}
+        <tr>
+          <td><b>{{ p.nombre }}</b></td>
+          <td class="of-muted">{{ p.cif|default:"—" }}</td>
+          <td>{{ p.email }}</td>
+          <td class="of-muted">{{ p.telefono|default:"—" }}</td>
+          <td class="of-num">{{ p.num_productos }}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <a class="of-btn of-btn-sm" href="{% url 'proveedor_editar' p.pk %}"><svg class="of-ico of-ico-sm"><use href="#i-edit"/></svg>Editar</a>
+            <a class="of-btn of-btn-sm of-btn-ghost" href="{% url 'proveedor_eliminar' p.pk %}"><svg class="of-ico of-ico-sm"><use href="#i-trash"/></svg>Eliminar</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="of-muted" style="padding:40px;text-align:center">Todavía no hay proveedores. Crea el primero con «Nuevo proveedor».</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -63,6 +63,15 @@
     </header>
 
     <main class="of-content">
+      {% if messages %}
+      <div class="d-grid gap-2 mb-4">
+        {% for m in messages %}
+        <div class="of-alert {% if m.tags == 'error' %}of-alert-error{% elif m.tags == 'success' %}of-alert-ok{% else %}of-alert-info{% endif %}" role="status">
+          <svg class="of-ico"><use href="#i-{% if m.tags == 'error' %}alert{% else %}check{% endif %}"/></svg><div>{{ m }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>
