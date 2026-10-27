@@ -1,0 +1,236 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }} · {{ orden.codigo }}{% endblock %}
+{% block content %}
+<style>
+  .tk-pasos { display: flex; gap: var(--space-2); list-style: none; margin: 0 0 var(--space-5); padding: 0; overflow-x: auto; }
+  .tk-paso { flex: 1 1 0; min-width: 120px; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md);
+    background: var(--surface); border: 1px solid var(--border); color: var(--ink-muted); font: 600 12px/16px var(--font-sans); }
+  .tk-paso i { font-style: normal; display: grid; place-items: center; width: 22px; height: 22px; flex: none; border-radius: 50%;
+    background: var(--surface-sunken); color: var(--ink-muted); font: 700 11px/1 var(--font-sans); }
+  .tk-paso.is-hecho { color: var(--st-received); } .tk-paso.is-hecho i { background: var(--st-received-bg); color: var(--st-received); }
+  .tk-paso.is-actual { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); } .tk-paso.is-actual i { background: var(--primary); color: var(--on-primary); }
+  .tk-hilo { list-style: none; margin: 0; padding: 0 var(--space-5) var(--space-3); }
+  .tk-item { display: flex; gap: 12px; padding: var(--space-4) 0; border-top: 1px solid var(--border); }
+  .tk-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font: 700 12px/1 var(--font-sans); }
+  .tk-body { min-width: 0; flex: 1; }
+  .tk-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+  .tk-texto { white-space: normal; overflow-wrap: anywhere; }
+  .tk-hilo { padding: 0 var(--space-4) var(--space-2); max-height: 460px; overflow-y: auto; }
+  .tk-avatar { width: 30px; height: 30px; font-size: 11px; }
+  .tk-nuevo { background: var(--st-incident); color: #fff; border-radius: var(--radius-pill); padding: 1px 8px; font: 700 10px/16px var(--font-sans); letter-spacing: .04em; text-transform: uppercase; }
+  .tk-item.is-nuevo { background: var(--st-incident-bg); margin: 0 calc(var(--space-4) * -1); padding-left: var(--space-4); padding-right: var(--space-4); }
+  .dt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4); }
+  .dt-grid dt { font: 600 11px/16px var(--font-sans); color: var(--ink-muted); text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+  .dt-grid dd { margin: 2px 0 0; font-weight: 600; }
+  .dt-lineas { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .dt-lineas th { text-align: left; font: 600 11px/16px var(--font-sans); color: var(--ink-muted); text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .dt-lineas td { padding: 10px; border-bottom: 1px solid var(--border); }
+  .dt-lineas .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .dt-lineas tr.is-fallo td { background: var(--st-incident-bg); font-weight: 600; }
+  .dt-lineas tr.is-fallo td:first-child { box-shadow: inset 4px 0 0 var(--st-incident); }
+  .dt-lineas tr:not(.is-fallo) { color: var(--ink-muted); }
+  .dt-problema { border-left: 3px solid var(--st-incident); background: var(--surface-sunken); border-radius: var(--radius-md); padding: 10px 14px; margin-top: var(--space-4); }
+  .sp-propuesta { background: var(--primary-soft); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: var(--space-4); }
+  .sp-accion { border-top: 1px solid var(--border); padding-top: var(--space-4); margin-top: var(--space-4); }
+  .sp-card.is-accion { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .tk-item.tk-comentario .tk-texto { background: var(--surface-sunken); border-radius: var(--radius-md); padding: 10px 12px; }
+  .tk-item.tk-mio.tk-comentario .tk-texto { background: var(--primary-soft); }
+  .tk-item:not(.tk-comentario) .tk-texto { border-left: 3px solid var(--border-strong); padding-left: 10px; }
+  .rs-opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--space-3); }
+  .rs-opcion { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
+  .rs-opcion small { display: block; color: var(--ink-muted); font-weight: 400; }
+  .rs-opcion:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+  .rs-opcion input { margin-top: 4px; }
+  .rs-presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-2); }
+  .rs-preset { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; font: inherit; color: inherit; }
+  .rs-preset small { color: var(--ink-muted); }
+  .rs-preset:hover { border-color: var(--primary); }
+  .rs-preset[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary); }
+  .rs-preset:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .rs-preset-tareas { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .rs-chip { background: var(--surface-sunken); border-radius: var(--radius-pill); padding: 2px 8px; font: 600 11px/16px var(--font-sans); color: var(--ink-muted); }
+  .rs-resumen { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
+  .rs-resumen .rs-editar { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; border-radius: var(--radius-md); background: color-mix(in srgb, var(--surface) 55%, transparent); }
+  .rs-resumen:hover .rs-editar, .rs-resumen:focus-visible .rs-editar { display: flex; }
+  .rs-resumen:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .rs-auto { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); }
+  .rs-auto[hidden], .rs-tarea[hidden], [data-edicion][hidden], [data-resumen][hidden] { display: none; }
+  .rs-nueva { width: 100%; padding: 10px; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); background: transparent; color: var(--ink-muted); font: 600 13px/18px var(--font-sans); cursor: pointer; }
+  .rs-nueva:hover { border-color: var(--primary); color: var(--primary); }
+  .rs-nueva[hidden] { display: none; }
+  .rs-repo-chk { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+  .rs-tarea { margin-bottom: var(--space-3); }
+  .rs-edicion { border: 1px solid var(--primary); border-radius: var(--radius-md); background: var(--surface-sunken); padding: 12px; }
+  .rs-tarea[hidden] { display: none; }
+  .tr-fila { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--border); }
+  .tr-fila:first-of-type { border-top: 0; }
+  .tr-fila.is-hecha { color: var(--ink-muted); }
+</style>
+
+  <a class="of-link d-inline-flex align-items-center gap-1 mb-3" href="{% url 'incidencia_lista' %}"><svg class="of-ico of-ico-sm"><use href="#i-back"/></svg>Incidencias</a>
+
+  <h1 class="of-page-title d-flex align-items-center flex-wrap gap-3">{{ titulo }} {% incidencia_badge incidencia %}</h1>
+  <p class="of-page-sub">Orden <a class="of-mono of-link" href="{% url 'orden_detalle' orden.pk %}">{{ orden.codigo }}</a> · {{ incidencia.linea.producto.nombre }}</p>
+
+  {% if requiere_mi_accion %}
+  <div class="of-alert of-alert-warn mb-4" role="status">
+    <svg class="of-ico"><use href="#i-alert"/></svg>
+    <div><b>Requiere tu acción</b>
+      {% if incidencia.fase == "abierta" %}Elige la resolución y define las tareas de cada departamento.
+      {% elif incidencia.fase == "propuesta" %}Revisa la resolución y las tareas propuestas por Compras: apruébalas o devuélvelas con el motivo.
+      {% elif incidencia.fase == "aceptada" %}Tienes tareas pendientes de esta incidencia en el menú Tareas.
+      {% elif incidencia.fase == "reposicion" %}Cuando llegue la orden de reposición, verifícala en Recepción.
+      {% elif incidencia.fase == "solucionada" %}Todas las tareas están hechas. Verifica la gestión y cierra la incidencia, o reabre una tarea si falta algo.{% endif %}
+    </div>
+  </div>
+  {% elif espera_a %}
+  <div class="of-alert of-alert-info mb-4" role="status"><svg class="of-ico"><use href="#i-check"/></svg><div>Esperando la acción de <b style="display:inline">{{ espera_a }}</b>. Mientras tanto puedes aportar información en el hilo.</div></div>
+  {% endif %}
+
+  <ol class="tk-pasos" aria-label="Fases de la incidencia">
+    {% for p in pasos %}<li class="tk-paso is-{{ p.estado }}"{% if p.estado == "actual" %} aria-current="step"{% endif %}><i>{% if p.estado == "hecho" %}✓{% else %}{{ forloop.counter }}{% endif %}</i>{{ p.etiqueta }}</li>{% endfor %}
+  </ol>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+
+      <section class="of-card mb-4" style="padding:var(--space-5)" aria-labelledby="h-detalles">
+        <h2 class="of-card-title mb-3" id="h-detalles">Detalles de la incidencia</h2>
+        <dl class="dt-grid">
+          <div><dt>Orden</dt><dd><a class="of-mono of-link" href="{% url 'orden_detalle' orden.pk %}">{{ orden.codigo }}</a></dd></div>
+          <div><dt>Estado de la orden</dt><dd>{% estado_badge orden.estado %}</dd></div>
+          <div><dt>Abierta por</dt><dd>{{ incidencia.creado_por.get_full_name|default:incidencia.creado_por.username }}</dd></div>
+          <div><dt>Fecha</dt><dd>{{ incidencia.fecha_creacion|date:"j M Y, H:i" }}</dd></div>
+          <div><dt>Categoría</dt><dd>{{ incidencia.get_categoria_display }}</dd></div>
+        </dl>
+        <div style="overflow-x:auto">
+          <table class="dt-lineas">
+            <thead><tr><th>Producto</th><th class="num">Pedido</th><th class="num">Recibido</th><th>Unidad</th><th>Resultado</th></tr></thead>
+            <tbody>
+              {% for l in lineas_orden %}
+              <tr{% if l.pk == incidencia.linea_id %} class="is-fallo"{% endif %}>
+                <td>{{ l.producto.nombre }}{% if l.pk == incidencia.linea_id %} <span class="of-badge of-badge-incident"><svg class="of-ico"><use href="#i-alert"/></svg>Línea con error</span>{% endif %}</td>
+                <td class="num">{{ l.cantidad_pedida|floatformat:"-2" }}</td>
+                <td class="num">{% if l.cantidad_verificada is not None %}{{ l.cantidad_verificada|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                <td>{{ l.unidad_medida.nombre }}</td>
+                <td>{% if l.resultado_verificacion == "ng" %}NG{% elif l.resultado_verificacion == "ok" %}OK{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="dt-problema"><span class="of-label d-block mb-1">Problema detectado</span>{{ incidencia.descripcion|linebreaksbr }}</div>
+      </section>
+
+      <section class="of-card sp-card{% if requiere_mi_accion %} is-accion{% endif %}" style="padding:var(--space-5)" aria-labelledby="h-solucion">
+        <h2 class="of-card-title mb-3" id="h-solucion">Resolución y tareas</h2>
+        {% if propuesta %}
+        <div class="sp-propuesta">
+          <div class="tk-meta"><b>{{ propuesta.autor.get_full_name|default:propuesta.autor.username }}</b>
+            <span class="of-muted ms-auto">{{ propuesta.fecha|date:"j M Y, H:i" }}</span></div>
+          <div class="tk-texto">{{ propuesta.texto|linebreaksbr }}</div>
+        </div>
+        {% elif "proponer" not in acciones %}
+        <p class="of-muted">Todavía no hay una resolución{% if incidencia.fase == "abierta" %}. Compras debe proponerla.{% endif %}</p>
+        {% endif %}
+
+        {% for r in reposiciones %}
+        <p class="mb-3"><svg class="of-ico of-ico-sm"><use href="#i-truck"/></svg> Orden de reposición: <a class="of-mono of-link" href="{% url 'orden_detalle' r.pk %}">{{ r.codigo }}</a> {% estado_badge r.estado %}</p>
+        {% endfor %}
+
+        {% if tareas or borradores %}
+        <h3 class="of-label mb-2">Tareas</h3>
+        <div class="mb-3">
+          {% for t in borradores %}
+          <div class="tr-fila"><span class="of-badge of-badge-draft">Pendiente de aprobar</span>
+            <div><b>{{ t.departamento }}</b> · {{ t.etiqueta }}{% if t.texto %}<div class="of-muted">{{ t.texto }}</div>{% endif %}</div></div>
+          {% endfor %}
+          {% for t in tareas %}
+          <div class="tr-fila{% if t.estado == 'completada' %} is-hecha{% endif %}">
+            {% if t.estado == "completada" %}<span class="of-badge of-badge-received"><svg class="of-ico"><use href="#i-check"/></svg>Hecha</span>
+            {% else %}<span class="of-badge of-badge-transit">Pendiente</span>{% endif %}
+            <div style="flex:1;min-width:0"><b>{{ t.departamento }}</b> · {{ t.etiqueta }}{% if t.automatica %} <span class="of-badge of-badge-draft">Automática</span>{% endif %}
+              {% if t.texto %}<div class="of-muted">{{ t.texto }}</div>{% endif %}
+              {% if t.estado == "completada" %}<div class="of-muted" style="font-size:12px">{{ t.completada_por.get_full_name|default:t.completada_por.username }} · {{ t.fecha_completada|date:"j M Y, H:i" }}</div>{% endif %}
+              {% if puede_reabrir and t.estado == "completada" and not t.automatica %}
+              <details class="mt-1"><summary class="of-link" style="cursor:pointer">Reabrir tarea</summary>
+                <form method="post" action="{% url 'tarea_reabrir' incidencia.pk t.pk %}" class="mt-2">{% csrf_token %}
+                  <textarea class="of-textarea" name="reabrir{{ t.pk }}-texto" rows="2" placeholder="Qué falta por hacer" required></textarea>
+                  <div class="d-flex justify-content-end mt-2"><button class="of-btn of-btn-sm of-btn-ng" type="submit">Reabrir</button></div>
+                </form></details>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if "proponer" in acciones %}
+        <div class="{% if propuesta %}sp-accion{% endif %}">
+          {% include "pedidos/incidencias/_form_resolucion.html" with form=formularios.proponer %}
+        </div>
+        {% endif %}
+
+        {% if "aceptar" in acciones %}
+        <div class="sp-accion"><div class="row g-4">
+          <div class="col-md-6"><h3 class="of-label mb-2">Aprobar la medida</h3>
+            {% include "pedidos/incidencias/_form_accion.html" with form=formularios.aceptar accion="aceptar" boton="Aprobar medida" %}</div>
+          <div class="col-md-6"><h3 class="of-label mb-2">Devolver a Compras</h3>
+            {% include "pedidos/incidencias/_form_accion.html" with form=formularios.rechazar accion="rechazar" boton="Devolver" clase="of-btn-ng" %}</div>
+        </div></div>
+        {% endif %}
+
+        {% if "cerrar" in acciones %}
+        <div class="sp-accion"><h3 class="of-label mb-2">Verificar y cerrar</h3>
+          {% include "pedidos/incidencias/_form_accion.html" with form=formularios.cerrar accion="cerrar" boton="Verificar y cerrar incidencia" %}</div>
+        {% endif %}
+
+        {% if incidencia.resuelta %}
+        <p class="of-muted mb-0 mt-3">Cerrada por <b>{{ incidencia.resuelta_por.get_full_name|default:incidencia.resuelta_por.username }}</b> el {{ incidencia.fecha_resolucion|date:"j M Y, H:i" }}.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="col-lg-4">
+      <section class="of-card mb-4" style="padding:var(--space-5)" aria-labelledby="h-prov">
+        <h2 class="of-card-title mb-3" id="h-prov">Proveedor</h2>
+        <p class="mb-2"><b>{{ proveedor.nombre }}</b></p>
+        <p class="mb-1"><span class="of-muted">Email:</span> <a class="of-link" href="mailto:{{ proveedor.email }}">{{ proveedor.email }}</a></p>
+        <p class="mb-1"><span class="of-muted">Teléfono:</span> {% if proveedor.telefono %}<a class="of-link" href="tel:{{ proveedor.telefono }}">{{ proveedor.telefono }}</a>{% else %}—{% endif %}</p>
+        <p class="mb-0"><span class="of-muted">Dirección:</span> {{ proveedor.direccion|default:"—" }}</p>
+      </section>
+
+      <section class="of-card" aria-labelledby="h-hilo">
+        <div class="of-card-head"><h2 class="of-card-title" id="h-hilo">Hilo de la incidencia</h2>
+          {% if n_nuevos %}<span class="tk-nuevo">{{ n_nuevos }} nuevo{{ n_nuevos|pluralize }}</span>{% endif %}</div>
+        <ol class="tk-hilo">
+          {% for m in mensajes %}
+          <li class="tk-item tk-{{ m.tipo }}{% if m.autor_id == request.user.id %} tk-mio{% endif %}{% if m.es_nuevo %} is-nuevo{% endif %}">
+            <span class="tk-avatar" aria-hidden="true">{{ m.autor|iniciales }}</span>
+            <div class="tk-body">
+              <div class="tk-meta">
+                <b>{{ m.autor.get_full_name|default:m.autor.username }}</b>
+                {% if m.rol %}<span class="of-badge of-badge-draft">{{ m.rol }}</span>{% endif %}
+                {% if m.tipo != "comentario" %}{% mensaje_badge m %}{% endif %}
+                {% if m.es_nuevo %}<span class="tk-nuevo">Nuevo</span>{% endif %}
+              </div>
+              <div class="of-muted" style="font-size:12px">{{ m.fecha|date:"j M Y, H:i" }}</div>
+              {% if m.texto %}<div class="tk-texto mt-1">{{ m.texto|linebreaksbr }}</div>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+
+        {% if "comentar" in acciones %}
+        <div style="padding:var(--space-4);border-top:1px solid var(--border)">
+          <h3 class="of-label mb-2">Añadir un mensaje</h3>
+          {% include "pedidos/incidencias/_form_accion.html" with form=formularios.comentar accion="comentar" boton="Publicar mensaje" clase="" %}
+        </div>
+        {% elif incidencia.fase == "resuelta" %}
+        <p class="of-muted m-0" style="padding:var(--space-4);border-top:1px solid var(--border)">La incidencia está cerrada y el hilo queda cerrado.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endblock %}

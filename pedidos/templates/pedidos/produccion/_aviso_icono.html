@@ -1,0 +1,3 @@
+<span class="of-stat-icon {% if a.tipo == 'recibida' %}of-tone-received{% elif a.tipo == 'con_incidencia' %}of-tone-incident{% else %}of-tone-approved{% endif %}" style="width:36px;height:36px;flex:none">
+  <svg class="of-ico"><use href="#i-{% if a.tipo == 'con_incidencia' %}alert{% else %}check{% endif %}"/></svg>
+</span>

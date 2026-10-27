@@ -1,0 +1,88 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .act-dia { font: 700 12px/16px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); padding: var(--space-4) var(--space-5) var(--space-2); background: var(--surface-sunken); border-top: 1px solid var(--border); position: sticky; top: 0; }
+  .act-dia:first-child { border-top: 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .act-lista { list-style: none; margin: 0; padding: 0; }
+  .act-item { display: flex; gap: 12px; padding: 12px var(--space-5); border-top: 1px solid var(--border); align-items: flex-start; }
+  .act-lista .act-item:first-child { border-top: 0; }
+  .act-hora { width: 44px; flex: none; color: var(--ink-muted); font: 500 13px/24px var(--font-sans); font-variant-numeric: tabular-nums; }
+  .act-av { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font: 700 10px/1 var(--font-sans); flex: none; }
+  .act-cuerpo { min-width: 0; flex: 1; }
+  .act-texto { margin-top: 4px; color: var(--ink-muted); font-size: 14px; border-left: 3px solid var(--border-strong); padding-left: 10px; overflow-wrap: anywhere; }
+  @media (max-width: 575px) { .act-item { flex-wrap: wrap; } .act-hora { width: auto; } }
+</style>
+
+  <div class="mb-4">
+    <h1 class="of-page-title">{{ titulo }}</h1>
+    <p class="of-page-sub mb-0">Todo lo que ha pasado en las órdenes y en las incidencias, de más reciente a más antiguo.</p>
+  </div>
+
+  <form method="get" class="d-flex flex-wrap align-items-end gap-3 mb-3" role="search">
+    <div class="of-field" style="flex:0 1 220px">
+      <label class="of-label" for="q">Código de orden</label>
+      <input class="of-input" id="q" name="q" type="search" value="{{ q }}" placeholder="OC-2026-0004">
+    </div>
+    <div class="of-field" style="flex:0 1 190px">
+      <label class="of-label" for="tipo">Tipo</label>
+      <select class="of-select" id="tipo" name="tipo" onchange="this.form.submit()">
+        {% for clave, etiqueta in tipos.items %}<option value="{{ clave }}"{% if tipo == clave %} selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="of-field" style="flex:0 1 210px">
+      <label class="of-label" for="rango">Periodo</label>
+      <select class="of-select" id="rango" name="rango" onchange="this.form.submit()">
+        {% for clave, etiqueta in rangos.items %}<option value="{{ clave }}"{% if rango == clave %} selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="of-field" style="flex:0 1 240px">
+      <label class="of-label" for="usuario">Usuario</label>
+      <select class="of-select" id="usuario" name="usuario" onchange="this.form.submit()">
+        <option value="">Todos los usuarios</option>
+        {% for u in usuarios %}<option value="{{ u.pk }}"{% if usuario == u.pk %} selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="of-btn" type="submit"><svg class="of-ico of-ico-sm"><use href="#i-search"/></svg>Buscar</button>
+    {% if hay_filtros %}<a class="of-btn" href="{% url 'actividad' %}">Limpiar</a>{% endif %}
+  </form>
+
+  <section class="of-card" style="overflow:hidden">
+    {% for d in dias %}
+      <h2 class="act-dia">{% if d.etiqueta == "Hoy" or d.etiqueta == "Ayer" %}{{ d.etiqueta }} · {% endif %}{{ d.dia|date:"l j \d\e F" }}</h2>
+      <ol class="act-lista">
+        {% for e in d.eventos %}
+        <li class="act-item">
+          <span class="act-hora">{{ e.fecha|time:"H:i" }}</span>
+          <span class="act-av" aria-hidden="true">{% if e.tipo == "estado" %}{{ e.h.usuario|iniciales }}{% else %}{{ e.m.autor|iniciales }}{% endif %}</span>
+          <div class="act-cuerpo">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+              {% if e.tipo == "estado" %}{% estado_badge e.h.estado_nuevo %}{% else %}{% mensaje_badge e.m %}{% endif %}
+              <a class="of-mono of-link" href="{% url 'orden_detalle' e.orden.pk %}">{{ e.orden.codigo }}</a>
+              <span>{% if e.tipo == "estado" %}{% frase_estado e.h %}{% else %}{% frase_mensaje e.m e.producto %}{% endif %}</span>
+              {% if e.tipo == "incidencia" %}<a class="of-link ms-auto" href="{% url 'incidencia_detalle' e.incidencia.pk %}">Ver ticket</a>{% endif %}
+            </div>
+            {% if e.tipo == "incidencia" and e.m.texto %}<div class="act-texto">{{ e.m.texto|linebreaksbr }}</div>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+    {% empty %}
+      <div style="padding:48px 24px;text-align:center">
+        <h2 class="of-card-title">Sin actividad</h2>
+        <p class="of-muted mb-0">{% if hay_filtros %}No hay eventos con estos filtros.{% else %}Todavía no ha pasado nada en este periodo.{% endif %}</p>
+      </div>
+    {% endfor %}
+  </section>
+
+  {% if pagina > 1 or hay_siguiente %}
+  <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Paginación">
+    <span class="of-muted">Página {{ pagina }}</span>
+    <div class="d-flex gap-2">
+      {% if pagina > 1 %}<a class="of-btn of-btn-sm" href="?{% if base_qs %}{{ base_qs }}&{% endif %}pagina={{ pagina|add:'-1' }}">Anterior</a>{% endif %}
+      {% if hay_siguiente %}<a class="of-btn of-btn-sm" href="?{% if base_qs %}{{ base_qs }}&{% endif %}pagina={{ pagina|add:'1' }}">Siguiente</a>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+{% endblock %}

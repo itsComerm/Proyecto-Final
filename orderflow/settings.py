@@ -111,7 +111,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'es'
 
-TIME_ZONE = 'Europe/Madrid  '
+TIME_ZONE = 'Europe/Madrid'
 
 USE_I18N = True
 
@@ -127,11 +127,34 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+DEFAULT_FROM_EMAIL = "OrderFlow <compras@orderflow.es>"
+
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+    }
 }
+
+if os.getenv("EMAIL_USER"):
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": os.getenv("EMAIL_HOST", "smtp.gmail.com"),
+                "port": 587,
+                "username": os.getenv("EMAIL_USER"),
+                "password": os.getenv("EMAIL_PASSWORD"),
+                "use_tls": True,
+                "timeout": 10,
+            },
+        }
+    }
+else:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        }
+    }
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "inicio"

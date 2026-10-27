@@ -1,0 +1,161 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .rec-linea { padding: var(--space-5); }
+  .rec-linea + .rec-linea { border-top: 1px solid var(--border); }
+  .rec-cabecera { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+  .rec-seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); max-width: 360px; }
+  .rec-seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .rec-seg label { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; border-radius: var(--radius-md);
+    border: 2px solid var(--border); background: var(--surface); font: 700 16px/1 var(--font-sans); color: var(--ink-muted); cursor: pointer; }
+  .rec-seg label:hover { border-color: var(--ink-muted); }
+  .rec-seg input:focus-visible + label { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .rec-seg input[value="ok"]:checked + label { background: var(--st-received-bg); border-color: var(--st-received); color: var(--st-received); }
+  .rec-seg input[value="ng"]:checked + label { background: var(--st-incident-bg); border-color: var(--st-incident); color: var(--st-incident); }
+  .rec-ng { margin-top: var(--space-4); padding: var(--space-4); border-radius: var(--radius-md); background: var(--st-incident-bg); }
+  .rec-ng[hidden] { display: none; }
+  .rec-barra { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);
+    padding: var(--space-4) var(--space-5); background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 12px rgba(15,23,42,.06); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+</style>
+
+  <a class="of-link d-inline-flex align-items-center gap-1 mb-3" href="{% url 'recepcion_lista' %}"><svg class="of-ico of-ico-sm"><use href="#i-back"/></svg>Recepción</a>
+  <h1 class="of-page-title d-flex align-items-center flex-wrap gap-3">
+    <span class="of-mono" style="font-size:26px">{{ orden.codigo }}</span>{% estado_badge orden.estado %}
+  </h1>
+  <p class="of-page-sub">Proveedor: <b>{{ orden.proveedor.nombre }}</b> · Compara lo que ha llegado con lo pedido y marca cada línea.</p>
+
+  <form method="post" id="form-recepcion" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="of-alert of-alert-error mb-3" role="alert"><svg class="of-ico"><use href="#i-alert"/></svg><div>{{ form.non_field_errors }}</div></div>{% endif %}
+
+    <section class="of-card mb-4" style="overflow:hidden">
+      <div class="of-card-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h2 class="of-card-title m-0">Líneas a verificar</h2>
+        <button type="button" class="of-btn of-btn-sm" id="todo-ok"><svg class="of-ico of-ico-sm"><use href="#i-check"/></svg>Marcar todo OK</button>
+      </div>
+
+      {% for f in filas %}
+      <div class="rec-linea" data-linea>
+        <div class="rec-cabecera">
+          <div>
+            <b style="font-size:17px">{{ f.linea.producto.nombre }}</b>
+            <div class="of-muted">Pedido: <span class="of-mono">{{ f.linea.cantidad_pedida|floatformat:"-2" }}</span> {{ f.linea.unidad_medida.nombre }}</div>
+          </div>
+        </div>
+
+        <div class="of-field{% if f.res.errors %} is-invalid{% endif %}">
+          <div class="rec-seg" role="radiogroup" aria-label="Resultado de {{ f.linea.producto.nombre }}">
+            <input type="radio" id="{{ f.res.html_name }}-ok" name="{{ f.res.html_name }}" value="ok"{% if f.res.value == "ok" %} checked{% endif %}>
+            <label for="{{ f.res.html_name }}-ok"><svg class="of-ico"><use href="#i-check"/></svg>OK</label>
+            <input type="radio" id="{{ f.res.html_name }}-ng" name="{{ f.res.html_name }}" value="ng"{% if f.res.value == "ng" %} checked{% endif %}>
+            <label for="{{ f.res.html_name }}-ng"><svg class="of-ico"><use href="#i-alert"/></svg>NG</label>
+          </div>
+          {% for e in f.res.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+        </div>
+
+        <div class="rec-ng" data-ng{% if f.res.value != "ng" %} hidden{% endif %}>
+          <div class="of-field mb-3{% if f.cat.errors %} is-invalid{% endif %}" style="max-width:340px">
+            <label class="of-label" for="{{ f.cat.id_for_label }}">Categoría de la incidencia<span class="of-req">*</span></label>
+            {{ f.cat }}
+            {% for e in f.cat.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+          </div>
+
+          <div data-panel="cantidad" class="mb-3">
+            <div class="of-field m-0{% if f.cant.errors %} is-invalid{% endif %}" style="max-width:300px">
+              <label class="of-label" for="{{ f.cant.id_for_label }}">Unidades recibidas<span class="of-req">*</span></label>
+              <div class="of-input-group"><span class="of-addon">{{ f.linea.unidad_medida.nombre }}</span>{{ f.cant }}</div>
+              <span class="of-muted" data-diferencia data-pedida="{{ f.linea.cantidad_pedida|stringformat:'s' }}" aria-live="polite"></span>
+              {% for e in f.cant.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+            </div>
+          </div>
+
+          {% for cat, opciones in f.subtipos.items %}
+          <div data-panel="{{ cat }}" class="mb-3">
+            <div class="of-field{% if f.sub.errors %} is-invalid{% endif %} mb-3">
+              <span class="of-label">{% if cat == "documentacion" %}Qué falta{% else %}Tipo de problema{% endif %}<span class="of-req">*</span></span>
+              <div class="d-flex flex-wrap gap-2" role="radiogroup">
+                {% for valor, etiqueta in opciones %}
+                <label class="of-chip" style="cursor:pointer"><input type="radio" name="{{ f.sub.html_name }}" value="{{ valor }}" data-cat-sub="{{ cat }}"{% if f.sub.value == valor %} checked{% endif %}> {{ etiqueta }}</label>
+                {% endfor %}
+              </div>
+              {% for e in f.sub.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+            </div>
+            {% if cat == "producto" or cat == "danado" %}
+            <div class="of-field m-0{% if f.afec.errors %} is-invalid{% endif %}" style="max-width:300px">
+              <label class="of-label" for="{{ f.afec.id_for_label }}">Unidades afectadas<span class="of-req">*</span></label>
+              <div class="of-input-group"><span class="of-addon">{{ f.linea.unidad_medida.nombre }}</span>{{ f.afec }}</div>
+              {% for e in f.afec.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+
+          <div class="of-field m-0{% if f.desc.errors %} is-invalid{% endif %}">
+            <label class="of-label" for="{{ f.desc.id_for_label }}">Información adicional<span class="of-opt" data-opt>(opcional)</span><span class="of-req" data-req hidden>*</span></label>
+            {{ f.desc }}
+            {% for e in f.desc.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="rec-barra">
+        <span id="resumen" class="of-muted" aria-live="polite"></span>
+        <div class="d-flex gap-2">
+          <a class="of-btn" href="{% url 'recepcion_lista' %}">Cancelar</a>
+          <button type="submit" class="of-btn of-btn-primary" id="confirmar"><svg class="of-ico of-ico-sm"><use href="#i-check"/></svg><span>Confirmar recepción</span></button>
+        </div>
+      </div>
+    </section>
+  </form>
+
+<script>
+(function () {
+  var form = document.getElementById("form-recepcion");
+  var lineas = form.querySelectorAll("[data-linea]");
+  var resumen = document.getElementById("resumen");
+  var boton = document.querySelector("#confirmar span");
+
+  // Cada categoría enseña su propio formulario
+  function paneles(l) {
+    var cat = l.querySelector("[data-cat]").value;
+    l.querySelectorAll("[data-panel]").forEach(function (p) { p.hidden = p.getAttribute("data-panel") !== cat; });
+    l.querySelectorAll("[data-cat-sub]").forEach(function (r) {
+      if (r.getAttribute("data-cat-sub") !== cat) r.checked = false;
+    });
+    var otra = cat === "otra";
+    l.querySelector("[data-opt]").hidden = otra;
+    l.querySelector("[data-req]").hidden = !otra;
+    var dif = l.querySelector("[data-diferencia]"), cant = l.querySelector('[name^="cant_"]');
+    if (dif && cant && cant.value !== "") {
+      var d = parseFloat(cant.value) - parseFloat(dif.getAttribute("data-pedida"));
+      dif.textContent = d === 0 ? "Coincide con lo pedido" : (d < 0 ? "Faltan " + (-d) : "Sobran " + d);
+    } else if (dif) { dif.textContent = ""; }
+  }
+
+  function actualizar() {
+    var marcadas = 0, ng = 0;
+    lineas.forEach(function (l) {
+      var elegido = l.querySelector('input[type="radio"]:checked');
+      var panel = l.querySelector("[data-ng]");
+      var esNg = elegido && elegido.value === "ng";
+      panel.hidden = !esNg;
+      if (esNg) paneles(l);
+      if (elegido) { marcadas++; if (esNg) ng++; }
+    });
+    resumen.textContent = marcadas + " de " + lineas.length + " marcadas" + (ng ? " · " + ng + " con incidencia" : "");
+    boton.textContent = ng ? "Confirmar y abrir incidencia" + (ng > 1 ? "s" : "") : "Confirmar recepción";
+  }
+
+  form.addEventListener("change", actualizar);
+  form.addEventListener("input", actualizar);
+  document.getElementById("todo-ok").addEventListener("click", function () {
+    lineas.forEach(function (l) { l.querySelector('input[value="ok"]').checked = true; });
+    actualizar();
+  });
+  actualizar();
+})();
+</script>
+{% endblock %}

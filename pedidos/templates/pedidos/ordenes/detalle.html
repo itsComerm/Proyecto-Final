@@ -1,0 +1,144 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ orden.codigo }}{% endblock %}
+{% block content %}
+<style>
+  .hilo-prod { background: var(--surface-sunken); border-radius: var(--radius-md); padding: 10px 14px; }
+  .hilo-prod summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+  .hilo-prod-item { padding: 10px 0; border-top: 1px solid var(--border); margin-top: 10px; }
+  .hilo-prod-texto { margin-top: 4px; border-left: 3px solid var(--border-strong); padding-left: 10px; overflow-wrap: anywhere; }
+</style>
+  <a class="of-link d-inline-flex align-items-center gap-1 mb-3" href="{% url 'orden_lista' %}"><svg class="of-ico of-ico-sm"><use href="#i-back"/></svg>Órdenes de compra</a>
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="of-page-title d-flex align-items-center flex-wrap gap-3">
+        <span class="of-mono" style="font-size:26px">{{ orden.codigo }}</span>{% estado_badge orden.estado %}{% if orden.tipo == "incidencia" %}<span class="of-badge of-badge-transit">Reposición de {{ orden.origen.linea.orden.codigo }}</span>{% endif %}
+      </h1>
+      <p class="of-page-sub mb-0">
+        Creada el {{ orden.fecha_creacion|date:"j \d\e F \d\e Y, H:i" }} por {{ orden.creado_por.get_full_name|default:orden.creado_por.username }}.
+      </p>
+    </div>
+    {% if rol_actual == "Almacén" or rol_actual == "Administrador" %}{% if orden.estado == "en_camino" %}
+    <a class="of-btn of-btn-primary" href="{% url 'recepcion_verificar' orden.pk %}"><svg class="of-ico of-ico-sm"><use href="#i-inbox"/></svg>Verificar recepción</a>
+    {% endif %}{% endif %}
+    {% if rol_actual == "Administrador" and orden.estado == "creada" %}
+    <form method="post" action="{% url 'orden_autorizar' orden.pk %}" onsubmit="return confirm('¿Autorizar la orden {{ orden.codigo }} y enviarla a {{ orden.proveedor.nombre|escapejs }}?');">
+      {% csrf_token %}
+      <button type="submit" class="of-btn of-btn-primary"><svg class="of-ico of-ico-sm"><use href="#i-check"/></svg>Autorizar y enviar</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <section class="of-card mb-4">
+        <div class="of-card-head"><h2 class="of-card-title">Líneas de la orden</h2></div>
+        <div style="overflow-x:auto">
+          <table class="of-table">
+            <thead>
+              <tr><th>Producto</th><th class="of-num">Pedido</th><th>Unidad</th><th class="of-num">Verificado</th><th>Resultado</th></tr>
+            </thead>
+            <tbody>
+              {% for l in orden.lineas.all %}
+              <tr>
+                <td><b>{{ l.producto.nombre }}</b></td>
+                <td class="of-num">{{ l.cantidad_pedida|floatformat:"-2" }}</td>
+                <td>{{ l.unidad_medida.nombre }}</td>
+                <td class="of-num">{% if l.cantidad_verificada is not None %}{{ l.cantidad_verificada|floatformat:"-2" }}{% else %}<span class="of-muted">—</span>{% endif %}</td>
+                <td>
+                  {% if l.resultado_verificacion == "ok" %}<span class="of-badge of-badge-received"><svg class="of-ico"><use href="#i-check"/></svg>OK</span>
+                  {% elif l.resultado_verificacion == "ng" %}<span class="of-badge of-badge-incident"><svg class="of-ico"><use href="#i-alert"/></svg>NG</span>
+                  {% else %}<span class="of-muted">Pendiente</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {% if incidencias %}
+      <section class="of-card mb-4">
+        <div class="of-card-head"><h2 class="of-card-title">Incidencias</h2></div>
+        <ul class="list-unstyled m-0" style="padding:0 var(--space-5) var(--space-5)">
+          {% for linea, i in incidencias %}
+          <li style="padding:12px 0;border-top:1px solid var(--border)">
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+              <b>{{ linea.producto.nombre }}</b>
+              {% incidencia_badge i %}
+              <span class="of-muted ms-auto">{{ i.fecha_creacion|date:"j M Y, H:i" }}</span>
+            </div>
+            <p class="mb-1">{{ i.descripcion|linebreaksbr }}</p>
+            <span class="of-muted">Registrada por {{ i.creado_por.get_full_name|default:i.creado_por.username }}</span>
+            {% if rol_actual != "Producción" %}<a class="of-link ms-2" href="{% url 'incidencia_detalle' i.pk %}">Ver ticket</a>{% endif %}
+            {% if rol_actual == "Producción" %}
+            <details class="hilo-prod mt-2" open>
+              <summary>Hilo de la incidencia ({{ i.mensajes.all|length }} mensaje{{ i.mensajes.all|length|pluralize }})</summary>
+              <ol class="list-unstyled m-0">
+                {% for m in i.mensajes.all %}
+                <li class="hilo-prod-item">
+                  <div class="d-flex align-items-center flex-wrap gap-2">
+                    <b>{{ m.autor.get_full_name|default:m.autor.username }}</b>
+                    {% if m.rol %}<span class="of-badge of-badge-draft">{{ m.rol }}</span>{% endif %}
+                    {% if m.tipo != "comentario" %}{% mensaje_badge m %}{% endif %}
+                    <span class="of-muted ms-auto" style="font-size:12px">{{ m.fecha|date:"j M Y, H:i" }}</span>
+                  </div>
+                  {% if m.texto %}<div class="hilo-prod-texto">{{ m.texto|linebreaksbr }}</div>{% endif %}
+                </li>
+                {% endfor %}
+              </ol>
+            </details>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+
+      <section class="of-card">
+        <div class="of-card-head"><h2 class="of-card-title">Historial</h2></div>
+        <ol class="list-unstyled m-0" style="padding:0 var(--space-5) var(--space-5)">
+          {% for e in actividad %}
+          <li class="d-flex align-items-center flex-wrap gap-2" style="padding:10px 0;border-top:1px solid var(--border)">
+            {% if e.tipo == "estado" %}
+              {% estado_badge e.h.estado_nuevo %}
+              <span style="flex:1;min-width:0">{% frase_estado e.h %}</span>
+            {% else %}
+              {% mensaje_badge e.m %}
+              <span style="flex:1;min-width:0">{% frase_mensaje e.m e.producto %}</span>
+            {% endif %}
+            <span class="of-muted text-nowrap" style="font-size:13px">{{ e.fecha|date:"j M Y, H:i" }}</span>
+            {% if e.tipo == "incidencia" and e.m.texto and e.m.tipo != "apertura" %}
+            <div class="w-100 of-muted" style="font-size:14px;padding-left:2px">{{ e.m.texto|linebreaksbr }}</div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+    </div>
+
+    <div class="col-lg-4">
+      <section class="of-card mb-4" style="padding:var(--space-5)">
+        <h2 class="of-card-title mb-3">Proveedor</h2>
+        {% with p=orden.proveedor %}
+        <p class="mb-1"><b>{{ p.nombre }}</b></p>
+        <p class="of-muted mb-1">{{ p.email }}</p>
+        {% if p.telefono %}<p class="of-muted mb-1">{{ p.telefono }}</p>{% endif %}
+        {% if p.direccion %}<p class="of-muted mb-0">{{ p.direccion }}</p>{% endif %}
+        {% endwith %}
+      </section>
+
+      <section class="of-card" style="padding:var(--space-5)">
+        <h2 class="of-card-title mb-3">Aviso a Producción</h2>
+        {% if orden.notificar_produccion %}
+          <span class="of-badge of-badge-received"><svg class="of-ico"><use href="#i-bell"/></svg>Activado</span>
+          <p class="of-muted mt-2 mb-0">Se avisará cuando la orden llegue (con o sin incidencia) y al resolver una incidencia.</p>
+        {% else %}
+          <span class="of-badge of-badge-draft">Desactivado</span>
+          <p class="of-muted mt-2 mb-0">No se avisará a nadie.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endblock %}

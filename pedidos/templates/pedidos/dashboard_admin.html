@@ -1,0 +1,139 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  a.dash-card { display: flex; text-decoration: none; color: inherit; height: 100%; position: relative; overflow: hidden; transition: box-shadow .15s, border-color .15s; }
+  a.dash-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .dash-quien { display: inline-flex; align-items: center; gap: 8px; }
+  .dash-avatar { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font: 700 10px/1 var(--font-sans); flex: none; }
+  .dash-inc-accion td { background: var(--primary-soft); }
+  .dash-inc-accion td:first-child { box-shadow: inset 4px 0 0 var(--primary); }
+  .dash-sub { display: block; font-size: 12px; color: var(--ink-muted); }
+</style>
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="of-page-title">{{ titulo }}</h1>
+      <p class="of-page-sub mb-0">Hola, {{ nombre_usuario }}. Resumen de la operativa de compras y almacén.</p>
+    </div>
+    <a class="of-btn of-btn-primary" href="{% url 'orden_nueva' %}"><svg class="of-ico of-ico-sm"><use href="#i-plus"/></svg>Nueva orden</a>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <a class="of-card of-stat dash-card" href="{% url 'orden_lista' %}?estado=en_camino">
+        <span class="of-stat-icon of-tone-transit"><svg class="of-ico"><use href="#i-truck"/></svg></span>
+        <div>
+          <p class="of-stat-label">Órdenes en camino</p>
+          <p class="of-stat-value">{{ t.en_camino }}</p>
+          <p class="of-stat-sub">{% if t.en_camino_mas_antigua %}La más antigua lleva {{ t.en_camino_mas_antigua.fecha|timesince }} en camino{% else %}Nada en camino{% endif %}</p>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a class="of-card of-stat dash-card{% if t.por_autorizar %} hay-novedad{% endif %}" href="{% url 'autorizacion_lista' %}">
+        {% if t.por_autorizar %}<span class="cinta">{{ t.por_autorizar }} pendiente{{ t.por_autorizar|pluralize }}</span>{% endif %}
+        <span class="of-stat-icon of-tone-primary"><svg class="of-ico"><use href="#i-check"/></svg></span>
+        <div>
+          <p class="of-stat-label">Pendientes de autorizar</p>
+          <p class="of-stat-value">{{ t.por_autorizar }}</p>
+          <p class="of-stat-sub">{% if t.pendiente_mas_antigua %}La más antigua espera desde hace {{ t.pendiente_mas_antigua.fecha_creacion|timesince }}{% else %}No hay órdenes esperando{% endif %}</p>
+        </div>
+        {% if t.por_autorizar %}<span class="ver-ahora">Ver ahora →</span>{% endif %}
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a class="of-card of-stat dash-card rojo{% if t.incidencias_abiertas %} hay-novedad{% endif %}" href="{% url 'incidencia_lista' %}?vista=activas">
+        {% if t.incidencias_abiertas %}<span class="cinta">{{ t.incidencias_abiertas }} abierta{{ t.incidencias_abiertas|pluralize }}</span>{% endif %}
+        <span class="of-stat-icon of-tone-incident"><svg class="of-ico"><use href="#i-alert"/></svg></span>
+        <div>
+          <p class="of-stat-label">Incidencias abiertas</p>
+          <p class="of-stat-value">{{ t.incidencias_abiertas }}</p>
+          <p class="of-stat-sub">{% if t.incidencias_admin %}<b style="color:var(--st-incident)">{{ t.incidencias_admin }} requiere{{ t.incidencias_admin|pluralize:"n" }} tu acción</b>{% elif t.incidencias_abiertas %}Ninguna espera tu acción{% else %}Sin incidencias abiertas{% endif %}</p>
+        </div>
+        {% if t.incidencias_abiertas %}<span class="ver-ahora">Ver ahora →</span>{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-xl-7">
+      <section class="of-card h-100" id="incidencias">
+        <div class="of-card-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h2 class="of-card-title m-0">Incidencias abiertas</h2>
+          <div class="d-flex align-items-center flex-wrap gap-2" role="navigation" aria-label="Filtro de incidencias">
+            <a class="of-chip" style="text-decoration:none" href="?incidencias=abiertas#incidencias" aria-pressed="{% if filtro_incidencias == 'abiertas' %}true{% else %}false{% endif %}">Todas <span class="of-count">{{ t.incidencias_abiertas }}</span></a>
+            <a class="of-chip" style="text-decoration:none" href="?incidencias=accion#incidencias" aria-pressed="{% if filtro_incidencias == 'accion' %}true{% else %}false{% endif %}">Requieren mi acción <span class="of-count">{{ t.incidencias_admin }}</span></a>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="of-table">
+            <thead><tr><th>Incidencia</th><th>Fase</th><th>Siguiente paso</th><th></th></tr></thead>
+            <tbody>
+              {% for i in incidencias %}
+              <tr{% if i.requiere_mi_accion %} class="dash-inc-accion"{% endif %}>
+                <td><a class="of-link" href="{% url 'incidencia_detalle' i.pk %}"><b>#{{ i.pk }}</b> · {{ i.linea.producto.nombre }}</a>
+                  <span class="dash-sub"><a class="of-mono of-link" href="{% url 'orden_detalle' i.linea.orden_id %}">{{ i.linea.orden.codigo }}</a> · {{ i.creado_por.get_full_name|default:i.creado_por.username }}</span></td>
+                <td>{% incidencia_badge i %}</td>
+                <td>
+                  {% if i.requiere_mi_accion %}
+                    <span class="of-badge" style="background:var(--primary);color:var(--on-primary)"><svg class="of-ico"><use href="#i-alert"/></svg>Requiere tu acción</span>
+                    <span class="dash-sub">{% if i.fase == "propuesta" %}Aceptar o rechazar la solución{% elif i.fase == "solucionada" %}Cerrar la incidencia{% else %}Ejecutar la medida{% endif %}</span>
+                  {% elif i.espera_a %}<span class="of-muted">Espera a {{ i.espera_a }}</span>
+                  {% else %}<span class="of-muted">—</span>{% endif %}
+                </td>
+                <td style="text-align:right"><a class="of-btn of-btn-sm{% if i.requiere_mi_accion %} of-btn-primary{% endif %}" href="{% url 'incidencia_detalle' i.pk %}">{% if i.requiere_mi_accion %}Actuar{% else %}Ver{% endif %}</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="of-muted" style="padding:32px;text-align:center">{% if filtro_incidencias == "accion" %}No hay incidencias esperando tu acción.{% else %}No hay incidencias abiertas.{% endif %}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:var(--space-3) var(--space-5) var(--space-4)"><a class="of-link" href="{% url 'incidencia_lista' %}?vista=activas">Ver todas las incidencias</a></div>
+      </section>
+    </div>
+
+    <div class="col-xl-5">
+      <section class="of-card h-100">
+        <div class="of-card-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h2 class="of-card-title m-0">Pendientes de autorizar</h2>
+          <a class="of-link" href="{% url 'autorizacion_lista' %}">Ver todas</a>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="of-table">
+            <thead><tr><th>Orden</th><th>Espera desde</th><th></th></tr></thead>
+            <tbody>
+              {% for o in pendientes %}
+              <tr>
+                <td><a class="of-mono of-link" href="{% url 'orden_detalle' o.pk %}">{{ o.codigo }}</a>
+                  <span class="dash-sub">{{ o.proveedor.nombre }} · {{ o.lineas.all|length }} línea{{ o.lineas.all|length|pluralize }} · {{ o.creado_por.get_full_name|default:o.creado_por.username }}</span></td>
+                <td class="of-muted text-nowrap">hace {{ o.fecha_creacion|timesince }}</td>
+                <td style="text-align:right"><a class="of-btn of-btn-sm of-btn-primary" href="{% url 'autorizacion_lista' %}">Revisar</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="of-muted" style="padding:32px;text-align:center">No hay órdenes pendientes de autorizar.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="of-card">
+    <div class="of-card-head"><h2 class="of-card-title">Actividad reciente</h2></div>
+    <ol class="list-unstyled m-0" style="padding:0 var(--space-5) var(--space-3)">
+      {% for h in actividad %}
+      <li class="d-flex align-items-center flex-wrap gap-2" style="padding:10px 0;border-top:1px solid var(--border)">
+        <a class="of-mono of-link text-nowrap" href="{% url 'orden_detalle' h.orden_id %}">{{ h.orden.codigo }}</a>
+        <span style="flex:1;min-width:0">{% frase_estado h %}</span>
+        <span class="of-muted text-nowrap" style="font-size:13px">hace {{ h.fecha|timesince }}</span>
+      </li>
+      {% empty %}
+      <li class="of-muted" style="padding:32px;text-align:center">Todavía no hay actividad.</li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endblock %}

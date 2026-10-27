@@ -1,0 +1,132 @@
+{% extends "pedidos/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .aj-bloque { padding: var(--space-4) var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
+  .aj-flecha { display: flex; justify-content: center; color: var(--ink-muted); padding: 4px 0; }
+  .aj-flecha svg { width: 18px; height: 18px; }
+  .aj-cabecera { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .aj-cabecera label { margin: 0; font-weight: 700; }
+  .aj-campo [readonly] { background: var(--surface-sunken); color: var(--ink-muted); cursor: default; resize: none; }
+  .aj-campo.editando [readonly], .aj-campo.editando input, .aj-campo.editando textarea { background: var(--surface); color: var(--ink); }
+  .aj-auto { background: var(--surface-sunken); border-style: dashed; }
+  .aj-auto p { margin: 0; }
+  .aj-candado { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-muted); }
+  .aj-candado svg { width: 13px; height: 13px; }
+  .aj-barra { position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;
+    padding: var(--space-3) 0; margin-top: var(--space-4); background: linear-gradient(to top, var(--surface-sunken) 70%, transparent); }
+  .aj-previa { position: sticky; top: 16px; }
+  .aj-previa iframe { width: 100%; height: 640px; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: #fff; }
+</style>
+
+  <div class="mb-4">
+    <h1 class="of-page-title">{{ titulo }}</h1>
+    <p class="of-page-sub mb-0">Estructura del email que recibe el proveedor al autorizar una orden. Todos los correos siguen el mismo orden; aquí cambias los textos.</p>
+  </div>
+
+  {% if con_errores %}
+  <div class="of-alert of-alert-error mb-3" role="alert"><svg class="of-ico"><use href="#i-alert"/></svg><div><b>Revisa los campos marcados</b>No se ha guardado nada.</div></div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-xl-6">
+      <form method="post" id="aj-form" novalidate>
+        {% csrf_token %}
+
+        {% for campo in form %}
+          {% if campo.name == "asunto" %}
+            {% include "pedidos/_ajustes_campo.html" with campo=campo %}
+            <div class="aj-flecha" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+            <p class="of-muted text-center mb-1" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Cuerpo del email</p>
+          {% elif campo.name == "saludo" or campo.name == "introduccion" %}
+            {% include "pedidos/_ajustes_campo.html" with campo=campo %}
+            <div class="aj-flecha" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+            {% if campo.name == "introduccion" %}
+            <div class="aj-bloque aj-auto">
+              <div class="aj-cabecera"><b>Detalle del pedido</b><span class="aj-candado"><svg class="of-ico"><use href="#i-lock"/></svg>Automático</span></div>
+              <p class="of-muted" style="font-size:14px">Tabla con <b>Artículo · Cantidad · Unidad</b> de cada línea de la orden. La genera el sistema, no se edita.</p>
+            </div>
+            <div class="aj-flecha" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+            {% endif %}
+          {% elif campo.name == "cierre" %}
+            {% include "pedidos/_ajustes_campo.html" with campo=campo %}
+            <div class="aj-flecha" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+          {% elif campo.name == "firma" %}
+            <div class="aj-bloque aj-auto mb-0" style="border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0">
+              <div class="aj-cabecera"><b>Firma · nombre del operario</b><span class="aj-candado"><svg class="of-ico"><use href="#i-lock"/></svg>Automático</span></div>
+              <p class="of-muted" style="font-size:14px">Nombre del operario de Compras que creó la orden.</p>
+            </div>
+            {% include "pedidos/_ajustes_campo.html" with campo=campo unida=True %}
+            <div class="aj-flecha" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+            <div class="aj-bloque aj-auto">
+              <div class="aj-cabecera"><b>Fecha</b><span class="aj-candado"><svg class="of-ico"><use href="#i-lock"/></svg>Automático</span></div>
+              <p class="of-muted" style="font-size:14px">Fecha de envío (la de la autorización).</p>
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        <div class="aj-barra">
+          <button type="submit" name="accion" value="restaurar" class="of-btn" formnovalidate
+                  onclick="return confirm('¿Restaurar todos los textos al contenido por defecto? Se perderán los cambios guardados.');">Restaurar por defecto</button>
+          <div class="d-flex gap-2">
+            <button type="button" class="of-btn" id="aj-descartar" hidden>Descartar cambios</button>
+            <button type="submit" name="accion" value="guardar" class="of-btn of-btn-primary" id="aj-guardar" disabled>Guardar cambios</button>
+          </div>
+        </div>
+        <p class="of-muted" style="font-size:12px">Última modificación: {{ plantilla.fecha_actualizacion|date:"j M Y, H:i" }}{% if plantilla.actualizado_por %} · {{ plantilla.actualizado_por.get_full_name|default:plantilla.actualizado_por.username }}{% endif %}</p>
+      </form>
+    </div>
+
+    <div class="col-xl-6">
+      <div class="aj-previa">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h2 class="of-card-title m-0">Vista previa</h2>
+          <span class="of-muted" style="font-size:13px">Con datos de ejemplo · se actualiza al escribir</span>
+        </div>
+        <iframe id="aj-iframe" title="Vista previa del email" src="{% url 'ajustes_email_vista_previa' %}"></iframe>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var form = document.getElementById("aj-form"), iframe = document.getElementById("aj-iframe");
+  var guardar = document.getElementById("aj-guardar"), descartar = document.getElementById("aj-descartar");
+  var base = "{% url 'ajustes_email_vista_previa' %}", campos = Array.prototype.slice.call(form.querySelectorAll(".aj-campo"));
+  var temporizador;
+
+  function entrada(c) { return c.querySelector("input, textarea"); }
+  function sucio() { return campos.some(function (c) { var e = entrada(c); return e.value !== e.defaultValue; }); }
+  function actualizarBarra() { var s = sucio() || campos.some(function (c) { return c.dataset.error === "1"; }); guardar.disabled = !s; descartar.hidden = !s; }
+  function previa() {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(function () {
+      var p = new URLSearchParams();
+      campos.forEach(function (c) { var e = entrada(c); p.set(e.name, e.value); });
+      iframe.src = base + "?" + p.toString();
+    }, 250);
+  }
+  function bloquear(c) {
+    var e = entrada(c); e.value = e.defaultValue; e.readOnly = true; c.classList.remove("editando");
+    c.querySelector(".aj-editar").textContent = "Editar"; c.querySelector(".aj-editar").setAttribute("aria-pressed", "false");
+  }
+  function desbloquear(c) {
+    var e = entrada(c); e.readOnly = false; c.classList.add("editando");
+    var b = c.querySelector(".aj-editar"); b.textContent = "Bloquear"; b.setAttribute("aria-pressed", "true"); e.focus();
+  }
+
+  campos.forEach(function (c) {
+    var e = entrada(c), b = c.querySelector(".aj-editar");
+    if (c.dataset.error === "1") desbloquear(c); else e.readOnly = true;       // bloqueados salvo que haya error
+    b.addEventListener("click", function () { if (e.readOnly) desbloquear(c); else { bloquear(c); actualizarBarra(); previa(); } });
+    e.addEventListener("input", function () { actualizarBarra(); previa(); });
+  });
+  descartar.addEventListener("click", function () { campos.forEach(bloquear); actualizarBarra(); previa(); });
+  form.addEventListener("submit", function (ev) {
+    if (ev.submitter && ev.submitter.value === "restaurar") return;
+    campos.forEach(function (c) { entrada(c).readOnly = false; });               // los readonly sí se envían, pero así queda explícito
+  });
+  actualizarBarra();
+})();
+</script>
+{% endblock %}

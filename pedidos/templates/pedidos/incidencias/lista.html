@@ -1,0 +1,112 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .inc-chip--rojo { background: var(--st-incident-bg); border-color: var(--st-incident); color: var(--st-incident); }
+  .inc-chip--verde { background: var(--st-received-bg); border-color: var(--st-received); color: var(--st-received); }
+  .inc-chip--gris { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink-muted); }
+  .inc-chip--rojo[aria-pressed="true"] { background: var(--st-incident); color: #fff; }
+  .inc-chip--verde[aria-pressed="true"] { background: var(--st-received); color: #fff; }
+  .inc-chip--gris[aria-pressed="true"] { background: var(--ink-muted); border-color: var(--ink-muted); color: #fff; }
+  .inc-chip--verde .of-count { background: var(--st-received); color: #fff; }
+  .inc-chip--gris .of-count { background: var(--ink-muted); color: #fff; }
+  .inc-chip--rojo[aria-pressed="true"] .of-count { background: #fff; color: var(--st-incident); }
+  .inc-chip--verde[aria-pressed="true"] .of-count { background: #fff; color: var(--st-received); }
+  .inc-chip--gris[aria-pressed="true"] .of-count { background: #fff; color: var(--ink-muted); }
+  .inc-accion td { background: var(--primary-soft); }
+  .inc-accion td:first-child { box-shadow: inset 4px 0 0 var(--primary); }
+  .inc-accion td:first-child a { font-size: 1.02em; }
+  .inc-upd { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 2px 8px; border-radius: var(--radius-pill);
+    background: var(--st-incident-bg, #fde8e8); color: var(--st-incident); font: 600 11px/16px var(--font-sans); }
+  .inc-upd i { width: 7px; height: 7px; border-radius: 50%; background: var(--st-incident); }
+</style>
+  <div class="mb-4">
+    <h1 class="of-page-title">{{ titulo }}</h1>
+    <p class="of-page-sub mb-0">Las que reciben novedades suben arriba. Cada incidencia avanza por estados y cada departamento actúa cuando le toca.</p>
+  </div>
+
+  {% if n_accion %}
+  <div class="of-alert of-alert-warn mb-4" role="status">
+    <svg class="of-ico"><use href="#i-alert"/></svg>
+    <div><b>Requiere tu acción</b>Tienes {{ n_accion }} incidencia{{ n_accion|pluralize }} esperando que actúes.
+      {% if vista != "accion" %}<a class="of-link" href="?vista=accion{% if qs_filtros %}&{{ qs_filtros }}{% endif %}">Verlas ahora</a>{% endif %}</div>
+  </div>
+  {% endif %}
+
+  <div class="d-flex flex-wrap gap-2 mb-3" role="navigation" aria-label="Filtro de incidencias">
+    <a class="of-chip inc-chip--rojo" style="text-decoration:none" href="?vista=accion{% if qs_filtros %}&{{ qs_filtros }}{% endif %}" aria-pressed="{% if vista == 'accion' %}true{% else %}false{% endif %}">Requieren mi acción <span class="of-count">{{ n_accion }}</span></a>
+    <a class="of-chip inc-chip--rojo" style="text-decoration:none" href="?vista=activas{% if qs_filtros %}&{{ qs_filtros }}{% endif %}" aria-pressed="{% if vista == 'activas' %}true{% else %}false{% endif %}">Activas <span class="of-count">{{ n_activas }}</span></a>
+    <a class="of-chip inc-chip--verde" style="text-decoration:none" href="?vista=resueltas{% if qs_filtros %}&{{ qs_filtros }}{% endif %}" aria-pressed="{% if vista == 'resueltas' %}true{% else %}false{% endif %}">Cerradas <span class="of-count">{{ n_resueltas }}</span></a>
+    <a class="of-chip inc-chip--gris" style="text-decoration:none" href="?vista=todas{% if qs_filtros %}&{{ qs_filtros }}{% endif %}" aria-pressed="{% if vista == 'todas' %}true{% else %}false{% endif %}">Todas <span class="of-count">{{ n_todas }}</span></a>
+  </div>
+
+  <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-3" aria-label="Filtros de incidencias">
+    <input type="hidden" name="vista" value="{{ vista }}">
+    <div><label class="of-label" for="f-edad">Antigüedad</label>
+      <select class="of-select" id="f-edad" name="edad" onchange="this.form.submit()">
+        <option value="">Cualquiera</option>
+        <option value="hoy"{% if filtros.edad == "hoy" %} selected{% endif %}>Abiertas hoy</option>
+        <option value="7"{% if filtros.edad == "7" %} selected{% endif %}>Últimos 7 días</option>
+        <option value="30"{% if filtros.edad == "30" %} selected{% endif %}>Últimos 30 días</option>
+        <option value="mas30"{% if filtros.edad == "mas30" %} selected{% endif %}>Más de 30 días</option>
+      </select></div>
+    <div><label class="of-label" for="f-cat">Categoría</label>
+      <select class="of-select" id="f-cat" name="categoria" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for clave, etiqueta in categorias %}<option value="{{ clave }}"{% if filtros.categoria == clave %} selected{% endif %}>{{ etiqueta }}</option>{% endfor %}
+      </select></div>
+    <div><label class="of-label" for="f-ord">Ordenar por</label>
+      <select class="of-select" id="f-ord" name="orden" onchange="this.form.submit()">
+        <option value="">Última actualización</option>
+        <option value="apertura"{% if filtros.orden == "apertura" %} selected{% endif %}>Más antiguas primero</option>
+      </select></div>
+    <div style="flex:1;min-width:200px"><label class="of-label" for="f-q">Orden, producto o proveedor</label>
+      <input class="of-input" id="f-q" name="q" value="{{ filtros.q }}" placeholder="OC-2026-0142, etiquetas…"></div>
+    <button class="of-btn" type="submit">Filtrar</button>
+    {% if hay_filtros or filtros.orden %}<a class="of-link" href="?vista={{ vista }}">Quitar filtros</a>{% endif %}
+  </form>
+
+  <div class="of-card" style="overflow-x:auto">
+    <table class="of-table">
+      <thead>
+        <tr><th>Incidencia</th><th>Categoría</th><th>Estado</th><th>Le toca a</th><th>Última actualización</th><th>Antigüedad</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for i in incidencias %}
+        <tr{% if i.hay_actualizaciones %} class="inc-accion"{% endif %}>
+          <td><a class="of-link" href="{% url 'incidencia_detalle' i.pk %}"><b>{{ i.linea.orden.codigo }}</b> · {{ i.linea.producto.nombre }}</a>
+            <div class="of-muted" style="font-size:12px">#{{ i.pk }} · {{ i.linea.producto.proveedor.nombre }}</div>
+            {% if i.hay_actualizaciones %}<div><span class="inc-upd"><i aria-hidden="true"></i>Novedad</span></div>{% endif %}</td>
+          <td>{{ i.get_categoria_display }}</td>
+          <td>{% incidencia_badge i %}</td>
+          <td>
+            {% if i.requiere_mi_accion %}
+              <span class="of-badge" style="background:var(--primary);color:var(--on-primary)"><svg class="of-ico"><use href="#i-alert"/></svg>Te toca a ti</span>
+            {% elif i.espera_a %}
+              <span class="of-muted">{{ i.espera_a }}</span>
+            {% else %}<span class="of-muted">—</span>{% endif %}
+          </td>
+          <td><span title="{{ i.ultima_actualizacion|date:'j M Y, H:i' }}">hace {{ i.ultima_actualizacion|timesince }}</span></td>
+          <td class="of-muted">{{ i.fecha_creacion|timesince }}</td>
+          <td style="text-align:right"><a class="of-btn of-btn-sm{% if i.requiere_mi_accion %} of-btn-primary{% endif %}" href="{% url 'incidencia_detalle' i.pk %}">{% if i.requiere_mi_accion %}Actuar{% else %}Ver{% endif %}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="of-muted" style="padding:40px;text-align:center">
+          {% if hay_filtros %}Ninguna incidencia coincide con los filtros.{% elif vista == "accion" %}No tienes incidencias pendientes de tu acción.{% elif vista == "resueltas" %}Todavía no hay incidencias cerradas.{% else %}No hay incidencias.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="Paginación">
+    <span class="of-muted">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    <div class="d-flex gap-2">
+      {% if page_obj.has_previous %}<a class="of-btn of-btn-sm" href="?{{ qs_pagina }}&page={{ page_obj.previous_page_number }}">Anterior</a>{% endif %}
+      {% if page_obj.has_next %}<a class="of-btn of-btn-sm" href="?{{ qs_pagina }}&page={{ page_obj.next_page_number }}">Siguiente</a>{% endif %}
+    </div>
+  </nav>
+  {% endif %}
+{% endblock %}

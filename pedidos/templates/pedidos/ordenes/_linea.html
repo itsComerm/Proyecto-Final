@@ -1,0 +1,19 @@
+<div class="orden-linea" data-linea>
+  {% for oculto in lf.hidden_fields %}{{ oculto }}{% endfor %}
+  <div class="of-field{% if lf.producto.errors %} is-invalid{% endif %}">
+    {{ lf.producto }}
+    {% for e in lf.producto.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+  </div>
+  <div class="of-field{% if lf.unidad_medida.errors %} is-invalid{% endif %}">
+    {{ lf.unidad_medida }}
+    {% for e in lf.unidad_medida.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+  </div>
+  <div class="of-field{% if lf.cantidad_pedida.errors %} is-invalid{% endif %}">
+    {{ lf.cantidad_pedida }}
+    {% for e in lf.cantidad_pedida.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+  </div>
+  <div>
+    <span hidden>{{ lf.DELETE }}</span>
+    <button type="button" class="of-icon-btn" data-quitar aria-label="Quitar línea"><svg class="of-ico"><use href="#i-trash"/></svg></button>
+  </div>
+</div>

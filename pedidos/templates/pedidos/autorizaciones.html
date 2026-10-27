@@ -1,0 +1,103 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .aut-lista { display: flex; flex-direction: column; gap: var(--space-3); }
+  .aut { padding: 0; overflow: hidden; }
+  .aut > summary { list-style: none; cursor: pointer; display: grid; align-items: center; gap: var(--space-4);
+    grid-template-columns: 24px minmax(110px, auto) minmax(0, 1.4fr) minmax(0, 1.2fr) auto; padding: 14px var(--space-5); }
+  .aut > summary::-webkit-details-marker { display: none; }
+  .aut > summary:hover { background: var(--surface-sunken); }
+  .aut > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .aut-chevron { width: 18px; height: 18px; transition: transform .15s; color: var(--ink-muted); transform: rotate(-90deg); }
+  .aut[open] .aut-chevron { transform: rotate(0deg); }
+  .aut[open] > summary { border-bottom: 1px solid var(--border); background: var(--surface-sunken); }
+  .aut-prov { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .aut-meta { color: var(--ink-muted); font-size: 13px; }
+  .aut-cuerpo { padding: var(--space-5); display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .aut-datos { display: grid; gap: var(--space-3); align-content: start; }
+  .aut-datos dt { font: 600 11px/16px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-muted); }
+  .aut-datos dd { margin: 0; }
+  .aut-acciones { display: flex; gap: var(--space-3); flex-wrap: wrap; padding: 0 var(--space-5) var(--space-5); }
+  @media (max-width: 768px) {
+    .aut > summary { grid-template-columns: 24px minmax(0, 1fr) auto; }
+    .aut > summary .aut-prov-col, .aut > summary .aut-meta-col { grid-column: 2 / 4; }
+    .aut-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="of-page-title">{{ titulo }}</h1>
+      <p class="of-page-sub mb-0">
+        {% if ordenes %}{% if ordenes|length == 1 %}1 orden pendiente{% else %}{{ ordenes|length }} órdenes pendientes{% endif %} de autorizar. Al autorizar, se envía el email al proveedor.
+        {% else %}Órdenes de compra a la espera de tu autorización.{% endif %}
+      </p>
+    </div>
+    {% if ordenes|length > 1 %}
+    <div class="d-flex gap-2">
+      <button type="button" class="of-btn of-btn-sm" data-aut-todo="abrir">Expandir todas</button>
+      <button type="button" class="of-btn of-btn-sm" data-aut-todo="cerrar">Contraer todas</button>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not ordenes %}
+  <section class="of-card" style="padding:48px 24px;text-align:center">
+    <span class="of-stat-icon of-tone-received mx-auto mb-3"><svg class="of-ico"><use href="#i-check"/></svg></span>
+    <h2 class="of-card-title">Todo al día</h2>
+    <p class="of-muted mb-0">No hay órdenes pendientes de autorizar.</p>
+  </section>
+  {% else %}
+  <div class="aut-lista">
+    {% for o in ordenes %}
+    <details class="of-card aut"{% if ordenes|length == 1 %} open{% endif %}>
+      <summary>
+        <svg class="aut-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        <span class="of-mono" style="font-weight:700">{{ o.codigo }}</span>
+        <span class="aut-prov aut-prov-col">{{ o.proveedor.nombre }}</span>
+        <span class="aut-meta aut-meta-col">{{ o.creado_por.get_full_name|default:o.creado_por.username }} · hace {{ o.fecha_creacion|timesince }}</span>
+        <span class="of-badge of-badge-draft">{{ o.lineas.all|length }} línea{{ o.lineas.all|length|pluralize }}</span>
+      </summary>
+
+      <div class="aut-cuerpo">
+        <div style="overflow-x:auto">
+          <table class="of-table">
+            <thead><tr><th>Producto</th><th class="of-num">Cantidad</th><th>Unidad</th></tr></thead>
+            <tbody>
+              {% for l in o.lineas.all %}
+              <tr><td><b>{{ l.producto.nombre }}</b></td><td class="of-num">{{ l.cantidad_pedida|floatformat:"-2" }}</td><td>{{ l.unidad_medida.nombre }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <dl class="aut-datos">
+          <div><dt>Proveedor</dt><dd>{{ o.proveedor.nombre }}</dd></div>
+          <div><dt>Se enviará a</dt><dd style="word-break:break-all">{{ o.proveedor.email }}</dd></div>
+          <div><dt>Creada</dt><dd>{{ o.fecha_creacion|date:"j M Y, H:i" }}</dd></div>
+          <div><dt>Aviso a Producción</dt><dd>{% if o.notificar_produccion %}Activado{% else %}<span class="of-muted">Desactivado</span>{% endif %}</dd></div>
+        </dl>
+      </div>
+
+      <div class="aut-acciones">
+        <form method="post" action="{% url 'orden_autorizar' o.pk %}" onsubmit="return confirm('¿Autorizar la orden {{ o.codigo }} y enviarla a {{ o.proveedor.nombre|escapejs }}?');">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="autorizaciones">
+          <button type="submit" class="of-btn of-btn-primary"><svg class="of-ico of-ico-sm"><use href="#i-check"/></svg>Autorizar y enviar</button>
+        </form>
+        <a class="of-btn" href="{% url 'orden_detalle' o.pk %}" target="_blank" rel="noopener">Ver orden completa<span class="visually-hidden"> (se abre en una pestaña nueva)</span></a>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  <script>
+    document.querySelectorAll("[data-aut-todo]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var abrir = b.dataset.autTodo === "abrir";
+        document.querySelectorAll("details.aut").forEach(function (d) { d.open = abrir; });
+      });
+    });
+  </script>
+  {% endif %}
+{% endblock %}

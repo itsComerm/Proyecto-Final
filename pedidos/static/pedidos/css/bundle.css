@@ -76,6 +76,12 @@
 .of-nav a:hover { background: var(--nav-hover); color: var(--nav-active); }
 .of-nav a[aria-current="page"] { background: var(--nav-active); color: var(--nav-active-ink); font-weight: 600; }
 .of-nav a .of-count { margin-left: auto; }
+/* Aviso de novedades: aparece aunque el contador no cambie (una tarea se cierra y otra se abre) */
+.of-nav a .of-novedad { margin-left: auto; padding: 2px 7px; border-radius: var(--radius-pill); background: #2563eb; color: #fff;
+  font: 800 10px/14px var(--font-sans); letter-spacing: .05em; text-transform: uppercase; box-shadow: 0 0 0 0 rgba(37,99,235,.55); animation: of-pulso 2s ease-out 3; }
+.of-nav a .of-novedad + .of-count { margin-left: 0; }
+@keyframes of-pulso { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,.55); } 70%, 100% { box-shadow: 0 0 0 8px rgba(37,99,235,0); } }
+@media (prefers-reduced-motion: reduce) { .of-nav a .of-novedad { animation: none; } }
 
 /* Inner tabs */
 .of-tabs { display: flex; gap: var(--space-5); border-bottom: 1px solid var(--border); }
@@ -176,3 +182,20 @@
 .of-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--st-received); }
 .of-meter.is-low > span { background: var(--st-transit); }
 .of-meter.is-out > span { background: var(--st-incident); }
+
+/* Tarjetas de dashboard: al pasar el ratón, sombra corta y suave del color de la tarjeta */
+a.dash-card { --tono: var(--ink-muted); }
+a.dash-card:has(.of-tone-primary)  { --tono: var(--primary); }
+a.dash-card:has(.of-tone-approved) { --tono: var(--st-approved); }
+a.dash-card:has(.of-tone-transit)  { --tono: var(--st-transit); }
+a.dash-card:has(.of-tone-received) { --tono: var(--st-received); }
+a.dash-card:has(.of-tone-incident) { --tono: var(--st-incident); }
+a.dash-card:hover { box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--tono) 45%, transparent); }
+a.dash-card:not(.hay-novedad):not(.is-alerta):hover { border-color: color-mix(in srgb, var(--tono) 35%, var(--border)); }
+
+/* Tarjeta con novedades (diseño D): degradado hacia su color, cinta con el recuento y «Ver ahora» */
+a.dash-card { position: relative; overflow: hidden; }
+a.dash-card.hay-novedad { border-color: var(--tono); background: linear-gradient(135deg, var(--surface) 55%, color-mix(in srgb, var(--tono) 12%, var(--surface))); }
+a.dash-card.hay-novedad .of-stat-value { color: var(--tono); }
+a.dash-card .cinta { position: absolute; top: -1px; right: -1px; background: var(--tono); color: var(--surface); font: 700 11px/1 var(--font-sans); padding: 6px 12px 6px 14px; border-bottom-left-radius: 14px; }
+a.dash-card .ver-ahora { position: absolute; right: 14px; bottom: 10px; font: 600 12px var(--font-sans); color: var(--tono); }

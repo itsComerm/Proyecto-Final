@@ -1,0 +1,125 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  a.dash-card { display: flex; text-decoration: none; color: inherit; height: 100%; transition: box-shadow .15s, border-color .15s; }
+  a.dash-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .ord { padding: 0; overflow: hidden; margin-bottom: var(--space-3); }
+  .ord > summary { list-style: none; cursor: pointer; display: grid; align-items: center; gap: var(--space-3);
+    grid-template-columns: 22px auto minmax(0, 1fr) auto auto; padding: 12px var(--space-4); }
+  .ord > summary::-webkit-details-marker { display: none; }
+  .ord > summary:hover { background: var(--surface-sunken); }
+  .ord > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .ord[open] > summary { background: var(--surface-sunken); border-bottom: 1px solid var(--border); }
+  .ord-chevron { width: 18px; height: 18px; color: var(--ink-muted); transform: rotate(-90deg); transition: transform .15s; }
+  .ord[open] .ord-chevron { transform: rotate(0); }
+  .ord-prov { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ord-meta { color: var(--ink-muted); font-size: 13px; white-space: nowrap; }
+  .ord-pie { display: flex; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: 10px var(--space-4); border-top: 1px solid var(--border); font-size: 13px; }
+  .buscador { display: flex; gap: var(--space-2); }
+  .buscador input { flex: 1; min-width: 0; }
+  .aviso { display: flex; gap: var(--space-3); padding: 12px var(--space-5); border-top: 1px solid var(--border); }
+  .aviso:first-child { border-top: 0; }
+  .aviso.sin-leer { background: var(--st-incident-bg); box-shadow: inset 4px 0 0 var(--st-incident); }
+  .aviso:not(.sin-leer) { background: var(--surface-sunken); color: var(--ink-muted); }
+  .aviso:not(.sin-leer) .of-mono { color: var(--ink-muted); }
+  .aviso:not(.sin-leer) .of-stat-icon { filter: grayscale(1); opacity: .7; }
+  .aviso.sin-leer .aviso-titulo::after { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--st-incident); margin-left: 8px; }
+  @media (max-width: 768px) {
+    .ord > summary { grid-template-columns: 22px minmax(0, 1fr) auto; }
+    .ord > summary .ord-prov, .ord > summary .ord-meta { grid-column: 2 / 4; white-space: normal; }
+    .buscador { flex-direction: column; }
+  }
+</style>
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="of-page-title">{{ titulo }}</h1>
+      <p class="of-page-sub mb-0">Hola, {{ nombre_usuario }}. Lo que viene, lo que acaba de llegar y qué materia prima tenemos.</p>
+    </div>
+    <form method="get" action="{% url 'materia_prima' %}" class="buscador" role="search" style="min-width:min(100%,380px)">
+      <label for="q" class="visually-hidden">Buscar materia prima</label>
+      <input id="q" name="q" type="search" class="form-control" placeholder="¿Tenemos etanol, sosa…?">
+      <button class="of-btn of-btn-primary" type="submit"><svg class="of-ico of-ico-sm"><use href="#i-search"/></svg>Buscar</button>
+    </form>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <a class="of-card of-stat dash-card{% if t.en_camino %} hay-novedad{% endif %}" href="#en-camino">
+        {% if t.en_camino %}<span class="cinta">{{ t.en_camino }} en camino</span>{% endif %}
+        <span class="of-stat-icon of-tone-transit"><svg class="of-ico"><use href="#i-truck"/></svg></span>
+        <div>
+          <p class="of-stat-label">Órdenes en camino</p>
+          <p class="of-stat-value">{{ t.en_camino }}</p>
+          <p class="of-stat-sub">{% if t.en_camino %}Material pendiente de llegar{% else %}Nada en camino ahora mismo{% endif %}</p>
+        </div>
+        {% if t.en_camino %}<span class="ver-ahora">Ver ahora →</span>{% endif %}
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a class="of-card of-stat dash-card{% if t.con_incidencia %} hay-novedad{% endif %}" href="{% url 'orden_lista' %}?estado=incidencia">
+        {% if t.con_incidencia %}<span class="cinta">{{ t.con_incidencia }} con incidencia</span>{% endif %}
+        <span class="of-stat-icon of-tone-incident"><svg class="of-ico"><use href="#i-alert"/></svg></span>
+        <div>
+          <p class="of-stat-label">Con incidencia</p>
+          <p class="of-stat-value">{{ t.con_incidencia }}</p>
+          <p class="of-stat-sub">{% if t.con_incidencia %}Parte del material no está disponible hasta resolverla{% else %}Todo el material llegado está disponible{% endif %}</p>
+        </div>
+        {% if t.con_incidencia %}<span class="ver-ahora">Ver ahora →</span>{% endif %}
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a class="of-card of-stat dash-card{% if t.sin_leer %} hay-novedad{% endif %}" href="{% url 'notificacion_lista' %}">
+        {% if t.sin_leer %}<span class="cinta">{{ t.sin_leer }} sin leer</span>{% endif %}
+        <span class="of-stat-icon of-tone-incident"><svg class="of-ico"><use href="#i-bell"/></svg></span>
+        <div>
+          <p class="of-stat-label">Avisos sin leer</p>
+          <p class="of-stat-value">{{ t.sin_leer }}</p>
+          <p class="of-stat-sub">{% if t.sin_leer %}Tienes novedades por revisar{% else %}Estás al día{% endif %}</p>
+        </div>
+        {% if t.sin_leer %}<span class="ver-ahora">Ver ahora →</span>{% endif %}
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-xl-8">
+      <section id="en-camino" class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="of-card-title m-0">Pendientes de llegar</h2>
+          <a class="of-link" href="{% url 'orden_lista' %}?estado=en_camino">Ver todas</a>
+        </div>
+        {% for o in en_camino %}{% include "pedidos/produccion/_orden_card.html" with o=o %}
+        {% empty %}<div class="of-card of-muted" style="padding:32px;text-align:center">No hay órdenes en camino.</div>{% endfor %}
+      </section>
+
+      <section id="llegadas">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="of-card-title m-0">Recién llegadas</h2>
+          <a class="of-link" href="{% url 'orden_lista' %}">Ver todas las órdenes</a>
+        </div>
+        {% for o in llegadas %}{% include "pedidos/produccion/_orden_card.html" with o=o %}
+        {% empty %}<div class="of-card of-muted" style="padding:32px;text-align:center">Todavía no ha llegado ninguna orden.</div>{% endfor %}
+      </section>
+    </div>
+
+    <div class="col-xl-4">
+      <section class="of-card">
+        <div class="of-card-head"><h2 class="of-card-title">Últimos avisos</h2><a class="of-link" href="{% url 'notificacion_lista' %}">Ver todos</a></div>
+        <div style="padding:0 0 var(--space-2)">
+          {% for a in avisos %}
+          <div class="aviso{% if not a.leida %} sin-leer{% endif %}">
+            {% include "pedidos/produccion/_aviso_icono.html" with a=a %}
+            <div style="min-width:0">
+              <div class="aviso-titulo"><b>{{ a.get_tipo_display }}</b></div>
+              <div class="of-muted" style="font-size:13px"><span class="of-mono">{{ a.orden.codigo }}</span> · {{ a.orden.proveedor.nombre }}<br>hace {{ a.fecha|timesince }}</div>
+            </div>
+          </div>
+          {% empty %}<p class="of-muted text-center m-0" style="padding:24px">Sin avisos todavía.</p>{% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+{% endblock %}

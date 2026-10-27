@@ -1,0 +1,118 @@
+{% extends "pedidos/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .orden-linea { display: grid; grid-template-columns: minmax(0, 1fr) 170px 150px 40px; gap: var(--space-3); align-items: start; padding: var(--space-2) 0; }
+  .orden-linea[hidden] { display: none; }
+  .orden-cabecera { display: grid; grid-template-columns: minmax(0, 1fr) 170px 150px 40px; gap: var(--space-3); }
+  @media (max-width: 767.98px) {
+    .orden-linea { grid-template-columns: 1fr 1fr 40px; padding: var(--space-4) 0; border-top: 1px solid var(--border); }
+    .orden-linea > :first-of-type { grid-column: 1 / -1; }
+    .orden-cabecera { display: none; }
+  }
+</style>
+
+  <a class="of-link d-inline-flex align-items-center gap-1 mb-3" href="{% url 'orden_lista' %}"><svg class="of-ico of-ico-sm"><use href="#i-back"/></svg>Órdenes de compra</a>
+  <h1 class="of-page-title">{{ titulo }}</h1>
+  <p class="of-page-sub">Elige el proveedor, añade los productos que necesitas y decide si avisar a Producción. La orden quedará pendiente de autorización.</p>
+
+  <form method="post" id="form-orden" novalidate>
+    {% csrf_token %}
+
+    <section class="of-card mb-4" style="padding:var(--space-5)">
+      <h2 class="of-card-title mb-3">Proveedor y avisos</h2>
+      {% if form.non_field_errors %}<div class="of-alert of-alert-error mb-3" role="alert"><svg class="of-ico"><use href="#i-alert"/></svg><div>{{ form.non_field_errors }}</div></div>{% endif %}
+
+      <div class="of-field{% if form.proveedor.errors %} is-invalid{% endif %}" style="max-width:420px">
+        <label class="of-label" for="{{ form.proveedor.id_for_label }}">Proveedor<span class="of-req">*</span></label>
+        {{ form.proveedor }}
+        {% for e in form.proveedor.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+        <span class="of-help">Cada producto pertenece a un único proveedor. Cambiar de proveedor reinicia los productos de las líneas.</span>
+      </div>
+
+      <div class="mt-4 d-flex align-items-start justify-content-between gap-4" style="max-width:520px">
+        <label for="{{ form.notificar_produccion.id_for_label }}" style="cursor:pointer">
+          <span class="of-label d-block" style="margin-bottom:2px">Avisar a Producción</span>
+          <span class="of-help">Producción recibirá un aviso cuando la orden llegue (con o sin incidencia) y cuando se resuelva una incidencia. Por defecto no se avisa a nadie.</span>
+        </label>
+        {{ form.notificar_produccion }}
+      </div>
+    </section>
+
+    <section class="of-card mb-4" style="padding:var(--space-5)">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="of-card-title m-0">Líneas de la orden</h2>
+        <button type="button" class="of-btn of-btn-sm" id="anadir-linea"><svg class="of-ico of-ico-sm"><use href="#i-plus"/></svg>Añadir línea</button>
+      </div>
+
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}<div class="of-alert of-alert-error mb-3" role="alert"><svg class="of-ico"><use href="#i-alert"/></svg><div>{{ formset.non_form_errors }}</div></div>{% endif %}
+      <p class="of-help mb-2" id="aviso-proveedor" hidden>Selecciona primero un proveedor para poder elegir productos.</p>
+
+      <div class="orden-cabecera of-muted mb-1" style="font:600 11px/16px var(--font-sans);letter-spacing:.08em;text-transform:uppercase">
+        <span>Producto</span><span>Unidad</span><span>Cantidad</span><span></span>
+      </div>
+      <div id="lineas">
+        {% for f in formset.forms %}{% include "pedidos/ordenes/_linea.html" with lf=f %}{% endfor %}
+      </div>
+    </section>
+
+    <div class="d-flex justify-content-end gap-2">
+      <a class="of-btn" href="{% url 'orden_lista' %}">Cancelar</a>
+      <button type="submit" class="of-btn of-btn-primary">Crear orden</button>
+    </div>
+  </form>
+
+  <template id="plantilla-linea">{% include "pedidos/ordenes/_linea.html" with lf=formset.empty_form %}</template>
+
+  <script>
+    (function () {
+      var proveedor = document.getElementById("{{ form.proveedor.id_for_label }}");
+      var contenedor = document.getElementById("lineas");
+      var total = document.getElementById("id_lineas-TOTAL_FORMS");
+      var plantilla = document.getElementById("plantilla-linea");
+      var anadir = document.getElementById("anadir-linea");
+      var aviso = document.getElementById("aviso-proveedor");
+
+      function filtrar(fila) {                       // solo los productos del proveedor elegido
+        var sel = fila.querySelector('select[name$="-producto"]');
+        if (!sel) return;
+        Array.prototype.forEach.call(sel.options, function (o) {
+          if (!o.value) return;
+          var ok = proveedor.value && o.dataset.proveedor === proveedor.value;
+          o.disabled = !ok; o.hidden = !ok;
+        });
+        if (sel.selectedOptions[0] && sel.selectedOptions[0].disabled) sel.value = "";
+      }
+      function actualizar() {
+        Array.prototype.forEach.call(contenedor.querySelectorAll("[data-linea]"), filtrar);
+        anadir.disabled = !proveedor.value;
+        aviso.hidden = !!proveedor.value;
+      }
+
+      proveedor.addEventListener("change", actualizar);
+
+      anadir.addEventListener("click", function () {
+        var n = parseInt(total.value, 10);
+        contenedor.insertAdjacentHTML("beforeend", plantilla.innerHTML.replace(/__prefix__/g, n));
+        total.value = n + 1;
+        var fila = contenedor.lastElementChild;
+        filtrar(fila);
+        var sel = fila.querySelector("select");
+        if (sel) sel.focus();
+      });
+
+      contenedor.addEventListener("click", function (e) {
+        var boton = e.target.closest("[data-quitar]");
+        if (!boton) return;
+        var fila = boton.closest("[data-linea]");
+        var borrar = fila.querySelector('input[name$="-DELETE"]');
+        if (borrar) borrar.checked = true;           // el servidor ignora las líneas marcadas
+        fila.hidden = true;
+        if (!contenedor.querySelector("[data-linea]:not([hidden])") && !anadir.disabled) anadir.click();
+      });
+
+      actualizar();
+    })();
+  </script>
+{% endblock %}

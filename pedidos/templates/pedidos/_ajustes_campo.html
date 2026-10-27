@@ -1,0 +1,11 @@
+<div class="aj-bloque aj-campo{% if campo.errors %} is-invalid{% endif %}" data-error="{% if campo.errors %}1{% else %}0{% endif %}"{% if unida %} style="border-top-left-radius:0;border-top-right-radius:0"{% endif %}>
+  <div class="aj-cabecera">
+    <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+    <button type="button" class="of-btn of-btn-sm aj-editar" aria-pressed="false" aria-controls="{{ campo.id_for_label }}">Editar</button>
+  </div>
+  <div class="of-field{% if campo.errors %} is-invalid{% endif %}" style="margin:0">
+    {{ campo }}
+    {% if campo.help_text %}<span class="of-help">{{ campo.help_text }}</span>{% endif %}
+    {% for e in campo.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+  </div>
+</div>

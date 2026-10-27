@@ -1,0 +1,39 @@
+{% load of_extras %}
+<details class="of-card ord"{% if abrir %} open{% endif %}>
+  <summary>
+    <svg class="ord-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    <span class="of-mono" style="font-weight:700">{{ o.codigo }}</span>
+    <span class="ord-prov">{{ o.proveedor.nombre }}</span>
+    <span class="ord-meta">
+      {% if o.modo == "camino" %}{% if o.salida %}En camino desde hace {{ o.salida|timesince }}{% else %}En camino{% endif %}
+      {% else %}Llegó hace {{ o.llegada|timesince }}{% endif %}
+    </span>
+    {% if o.modo == "llegada" %}
+      {% if o.resultado == "incidencia" %}<span class="of-badge of-badge-incident"><svg class="of-ico"><use href="#i-alert"/></svg>Con incidencia</span>
+      {% elif o.resultado == "resuelta" %}<span class="of-badge of-badge-approved"><svg class="of-ico"><use href="#i-check"/></svg>Incidencia resuelta</span>
+      {% else %}<span class="of-badge of-badge-received"><svg class="of-ico"><use href="#i-check"/></svg>Todo OK</span>{% endif %}
+    {% else %}<span class="of-badge of-badge-transit"><svg class="of-ico"><use href="#i-truck"/></svg>En camino</span>{% endif %}
+  </summary>
+  <div style="overflow-x:auto">
+    <table class="of-table">
+      <thead><tr><th>Materia prima</th><th class="of-num">Pedido</th><th>Unidad</th>{% if o.modo == "llegada" %}<th class="of-num">Verificado</th>{% endif %}<th>Situación</th></tr></thead>
+      <tbody>
+        {% for l in o.lineas.all %}
+        <tr>
+          <td><b>{{ l.producto.nombre }}</b></td>
+          <td class="of-num">{{ l.cantidad_pedida|floatformat:"-2" }}</td>
+          <td>{{ l.unidad_medida.nombre }}</td>
+          {% if o.modo == "llegada" %}<td class="of-num">{% if l.cantidad_verificada is not None %}{{ l.cantidad_verificada|floatformat:"-2" }}{% else %}<span class="of-muted">—</span>{% endif %}</td>{% endif %}
+          <td><span class="of-badge of-badge-{{ l.tono }}">{{ l.etiqueta }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="ord-pie">
+    <span class="of-muted">
+      {% if o.modo == "llegada" %}Llegada: {{ o.llegada|date:"j M Y, H:i" }}{% elif o.salida %}Autorizada: {{ o.salida|date:"j M Y, H:i" }}{% endif %}
+    </span>
+    <a class="of-link" href="{% url 'orden_detalle' o.pk %}" target="_blank" rel="noopener">Ver orden completa<span class="visually-hidden"> (pestaña nueva)</span></a>
+  </div>
+</details>

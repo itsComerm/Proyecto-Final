@@ -1,0 +1,14 @@
+{% autoescape off %}{{ saludo }}
+
+{{ introduccion }}
+
+ORDEN {{ codigo }}
+{% for l in lineas %}- {{ l.articulo }}: {{ l.cantidad }} {{ l.unidad }}
+{% endfor %}
+{{ cierre }}
+
+{{ firmante }}
+{{ firma }}
+
+{{ fecha }}
+{% endautoescape %}

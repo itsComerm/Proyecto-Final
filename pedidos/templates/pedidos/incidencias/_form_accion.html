@@ -1,0 +1,13 @@
+<form method="post" action="{% url 'incidencia_accion' incidencia.pk accion %}" novalidate>
+  {% csrf_token %}
+  {% for field in form %}
+  <div class="of-field mb-3{% if field.errors %} is-invalid{% endif %}">
+    <label class="of-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="of-req">*</span>{% else %}<span class="of-opt">opcional</span>{% endif %}</label>
+    {{ field }}
+    {% for e in field.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+  </div>
+  {% endfor %}
+  <div class="d-flex justify-content-end">
+    <button type="submit" class="of-btn {{ clase|default:'of-btn-primary' }}">{{ boton }}</button>
+  </div>
+</form>

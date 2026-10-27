@@ -1,0 +1,58 @@
+{% extends "pedidos/base.html" %}
+{% load of_extras %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .tc-card { display: grid; grid-template-columns: 1fr auto; gap: var(--space-4); align-items: start; padding: var(--space-4) var(--space-5); margin-bottom: var(--space-3); }
+  .tc-card.is-nueva { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary); }
+  .tc-card.is-hecha { color: var(--ink-muted); }
+  .tc-nueva { background: var(--primary); color: var(--on-primary); border-radius: var(--radius-pill); padding: 1px 8px; font: 700 10px/16px var(--font-sans); letter-spacing: .04em; text-transform: uppercase; margin-left: 6px; }
+  @media (max-width: 640px) { .tc-card { grid-template-columns: 1fr; } }
+</style>
+  <div class="mb-4">
+    <h1 class="of-page-title">Tareas</h1>
+    <p class="of-page-sub mb-0">Lo que {{ rol }} tiene que hacer para resolver las incidencias. El número del menú cuenta las pendientes y «Nuevo» avisa cuando llega alguna.</p>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 mb-4" role="navigation" aria-label="Filtro de tareas">
+    <a class="of-chip inc-chip--rojo" style="text-decoration:none" href="?vista=pendientes" aria-pressed="{% if vista == 'pendientes' %}true{% else %}false{% endif %}">Pendientes <span class="of-count">{{ n_pendientes }}</span></a>
+    <a class="of-chip" style="text-decoration:none" href="?vista=completadas" aria-pressed="{% if vista == 'completadas' %}true{% else %}false{% endif %}">Completadas <span class="of-count">{{ n_completadas }}</span></a>
+    <a class="of-chip" style="text-decoration:none" href="?vista=todas" aria-pressed="{% if vista == 'todas' %}true{% else %}false{% endif %}">Todas</a>
+  </div>
+
+  {% for t in tareas %}
+  <article class="of-card tc-card{% if t.nueva %} is-nueva{% endif %}{% if t.estado == 'completada' %} is-hecha{% endif %}">
+    <div style="min-width:0">
+      <b style="font-size:16px">{{ t.etiqueta }}</b>{% if t.nueva %}<span class="tc-nueva">Nueva</span>{% endif %}
+      {% if t.automatica %}<span class="of-badge of-badge-draft ms-1">Automática</span>{% endif %}
+      <div class="of-muted" style="font-size:13px">
+        <a class="of-mono of-link" href="{% url 'orden_detalle' t.orden.pk %}">{{ t.orden.codigo }}</a> · {{ t.incidencia.linea.producto.nombre }} · {{ t.incidencia.get_categoria_display }}
+        {% if ver_incidencia %}· <a class="of-link" href="{% url 'incidencia_detalle' t.incidencia_id %}">Ver incidencia</a>{% endif %}
+        {% if t.orden_reposicion %}· Reposición: <a class="of-mono of-link" href="{% url 'orden_detalle' t.orden_reposicion.pk %}">{{ t.orden_reposicion.codigo }}</a>{% endif %}
+      </div>
+      {% if t.texto %}<div class="mt-2">{{ t.texto|linebreaksbr }}</div>{% endif %}
+      <div class="of-muted mt-1" style="font-size:12px">
+        {% if t.estado == "completada" %}Completada por {{ t.completada_por.get_full_name|default:t.completada_por.username }} · {{ t.fecha_completada|date:"j M Y, H:i" }}
+        {% else %}Asignada por {{ t.creada_por.get_full_name|default:t.creada_por.username }} · hace {{ t.visible_desde|timesince }}{% endif %}
+      </div>
+    </div>
+    <div style="min-width:200px">
+      {% if t.estado == "pendiente" %}
+        {% if t.automatica %}
+          <span class="of-muted" style="font-size:13px">Se completa sola al recibir la mercancía.</span>
+          {% if t.orden_reposicion %}<div class="mt-2"><a class="of-btn of-btn-sm" href="{% url 'recepcion_lista' %}">Ir a Recepción</a></div>{% endif %}
+        {% else %}
+        <form method="post" action="{% url 'tarea_completar' t.pk %}">{% csrf_token %}
+          <textarea class="of-textarea" name="t{{ t.pk }}-texto" rows="2" placeholder="Nota (opcional)"></textarea>
+          <div class="d-flex justify-content-end mt-2"><button type="submit" class="of-btn of-btn-primary of-btn-sm"><svg class="of-ico of-ico-sm"><use href="#i-check"/></svg>Marcar completada</button></div>
+        </form>
+        {% endif %}
+      {% else %}
+        <span class="of-badge of-badge-received"><svg class="of-ico"><use href="#i-check"/></svg>Completada</span>
+      {% endif %}
+    </div>
+  </article>
+  {% empty %}
+  <div class="of-card" style="padding:40px;text-align:center"><p class="of-muted m-0">{% if vista == "pendientes" %}No tienes tareas pendientes.{% else %}No hay tareas en esta vista.{% endif %}</p></div>
+  {% endfor %}
+{% endblock %}

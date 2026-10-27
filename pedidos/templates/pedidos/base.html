@@ -24,7 +24,7 @@
         {% for item in grupo.items %}
           {% if item.url %}
             <a href="{{ item.url }}"{% if item.activo %} aria-current="page"{% endif %}>
-              <svg class="of-ico"><use href="#i-{{ item.icono }}"/></svg>{{ item.etiqueta }}
+              <svg class="of-ico"><use href="#i-{{ item.icono }}"/></svg>{{ item.etiqueta }}{% if item.novedad %}<span class="of-novedad" title="Hay novedades desde tu última visita">Nuevo</span>{% endif %}{% if item.contador %}<span class="of-count" title="{{ item.titulo_contador }}">{{ item.contador }}</span>{% endif %}
             </a>
           {% else %}
             <a href="#" class="is-soon" aria-disabled="true" tabindex="-1">

@@ -1,0 +1,79 @@
+{% extends "pedidos/base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+{% block content %}
+<style>
+  .aviso-fila { display: flex; gap: var(--space-4); align-items: flex-start; padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border); }
+  .aviso-fila:first-child { border-top: 0; }
+  .aviso-fila.sin-leer { background: var(--st-incident-bg); box-shadow: inset 4px 0 0 var(--st-incident); }
+  .aviso-fila:not(.sin-leer) { background: var(--surface-sunken); color: var(--ink-muted); }
+  .aviso-fila:not(.sin-leer) .of-mono { color: var(--ink-muted); }
+  .aviso-fila:not(.sin-leer) .of-stat-icon { filter: grayscale(1); opacity: .7; }
+  .av-chip--rojo { background: var(--st-incident-bg); border-color: var(--st-incident); color: var(--st-incident); }
+  .av-chip--gris { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--ink-muted); }
+  .av-chip--rojo[aria-pressed="true"] { background: var(--st-incident); color: #fff; }
+  .av-chip--gris[aria-pressed="true"] { background: var(--ink-muted); border-color: var(--ink-muted); color: #fff; }
+  .av-chip--gris .of-count { background: var(--ink-muted); color: #fff; }
+  .av-chip--rojo[aria-pressed="true"] .of-count { background: #fff; color: var(--st-incident); }
+  .av-chip--gris[aria-pressed="true"] .of-count { background: #fff; color: var(--ink-muted); }
+  .aviso-fila form { display: inline; }
+  .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--st-incident); margin-right: 6px; }
+  @media (max-width: 575px) { .aviso-fila { flex-wrap: wrap; } }
+</style>
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+    <div>
+      <h1 class="of-page-title">{{ titulo }}</h1>
+      <p class="of-page-sub mb-0">Avisos de órdenes que han llegado (con o sin incidencia) e incidencias resueltas.</p>
+    </div>
+    {% if n_sin_leer %}
+    <form method="post" action="{% url 'notificacion_leer_todas' %}">
+      {% csrf_token %}<input type="hidden" name="vista" value="{{ vista }}">
+      <button class="of-btn" type="submit"><svg class="of-ico of-ico-sm"><use href="#i-check"/></svg>Marcar todas como leídas</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="d-flex gap-2 mb-3">
+    <a class="of-chip av-chip--rojo" style="text-decoration:none" href="?vista=sin_leer" aria-pressed="{% if vista == 'sin_leer' %}true{% else %}false{% endif %}">Sin leer <span class="of-count">{{ n_sin_leer }}</span></a>
+    <a class="of-chip av-chip--gris" style="text-decoration:none" href="?vista=todas" aria-pressed="{% if vista == 'todas' %}true{% else %}false{% endif %}">Todas <span class="of-count">{{ n_todas }}</span></a>
+  </div>
+
+  <section class="of-card">
+    {% for a in avisos %}
+    <div class="aviso-fila{% if not a.leida %} sin-leer{% endif %}">
+      {% include "pedidos/produccion/_aviso_icono.html" with a=a %}
+      <div style="flex:1;min-width:0">
+        <div>{% if not a.leida %}<span class="punto" title="Sin leer"></span>{% endif %}<b>{{ a.get_tipo_display }}</b>
+          <span class="of-muted"> · hace {{ a.fecha|timesince }}</span></div>
+        <div>
+          <span class="of-mono">{{ a.orden.codigo }}</span> · {{ a.orden.proveedor.nombre }}
+        </div>
+        <div class="of-muted" style="font-size:14px">
+          {% if a.tipo == "recibida" %}Verificada en Almacén: ya está disponible.
+          {% elif a.tipo == "con_incidencia" %}Ha llegado, pero parte del material no está disponible hasta resolver la incidencia.
+          {% else %}{% if a.incidencia %}«{{ a.incidencia.linea.producto.nombre }}»: {% endif %}la incidencia se ha cerrado.{% endif %}
+          <br>Materia prima: {% for l in a.orden.lineas.all %}{{ l.producto.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <form method="post" action="{% url 'notificacion_leer' a.pk %}">
+          {% csrf_token %}<input type="hidden" name="next" value="orden"><input type="hidden" name="vista" value="{{ vista }}">
+          <button class="of-btn of-btn-sm of-btn-primary" type="submit">Ver orden</button>
+        </form>
+        {% if not a.leida %}
+        <form method="post" action="{% url 'notificacion_leer' a.pk %}">
+          {% csrf_token %}<input type="hidden" name="vista" value="{{ vista }}">
+          <button class="of-btn of-btn-sm" type="submit">Marcar leída</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div style="padding:48px 24px;text-align:center">
+      <span class="of-stat-icon of-tone-received mx-auto mb-3"><svg class="of-ico"><use href="#i-check"/></svg></span>
+      <h2 class="of-card-title">{% if vista == "sin_leer" %}Estás al día{% else %}Sin avisos{% endif %}</h2>
+      <p class="of-muted mb-0">{% if vista == "sin_leer" %}No tienes avisos sin leer.{% else %}Todavía no has recibido avisos.{% endif %}</p>
+    </div>
+    {% endfor %}
+  </section>
+{% endblock %}

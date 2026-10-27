@@ -1,0 +1,170 @@
+{% load of_extras %}
+<form method="post" action="{% url 'incidencia_accion' incidencia.pk 'proponer' %}" id="form-resolucion" novalidate
+      data-repone="{{ form.repone|join:',' }},otra_reponer" data-preset-actual="{{ form.preset.value|default:'' }}">
+  {% csrf_token %}
+  {{ form.resolucion }}{{ form.preset }}
+  {% if form.non_field_errors %}<div class="of-alert of-alert-error mb-3" role="alert"><svg class="of-ico"><use href="#i-alert"/></svg><div>{{ form.non_field_errors }}</div></div>{% endif %}
+
+  <div class="mb-4{% if form.resolucion.errors %} is-invalid{% endif %}">
+    <span class="of-label d-block mb-2">Soluciones recomendadas<span class="of-req">*</span></span>
+    <div class="rs-presets" role="group" aria-label="Soluciones recomendadas">
+      {% for p in form.presets %}
+      <button type="button" class="rs-preset" data-preset="{{ p.json }}" data-clave="{{ p.clave }}" aria-pressed="false">
+        <b>{{ p.titulo }}</b><small>{{ p.descripcion }}</small>
+      </button>
+      {% endfor %}
+      <button type="button" class="rs-preset" data-clave="personalizado" aria-pressed="false">
+        <b>Personalizado</b><small>Crea tú el flujo de tareas.</small>
+      </button>
+    </div>
+    {% for e in form.resolucion.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+  </div>
+
+  <div id="rs-tareas-bloque">
+    <span class="of-label d-block mb-2">Tareas</span>
+    <p class="of-muted" id="rs-vacio" style="font-size:13px">Elige una solución recomendada o «Personalizado» para ver las tareas.</p>
+
+    {% for fila in form.filas_tareas %}
+    <div class="rs-tarea" data-tarea hidden>
+      <div class="rs-resumen" data-resumen role="button" tabindex="0" aria-label="Editar tarea">
+        <span class="rs-chip" data-r-dep></span><b data-r-acc></b><span class="of-muted" data-r-txt></span>
+        <span class="rs-editar"><span class="of-btn of-btn-sm">Editar</span></span>
+      </div>
+      <div class="rs-edicion" data-edicion hidden>
+        <div class="row g-2">
+          <div class="col-md-4"><div class="of-field m-0{% if fila.dep.errors %} is-invalid{% endif %}"><label class="of-label" for="{{ fila.dep.id_for_label }}">¿Quién?</label>{{ fila.dep }}
+            {% for e in fila.dep.errors %}<span class="of-error">{{ e }}</span>{% endfor %}</div></div>
+          <div class="col-md-8"><div class="of-field m-0{% if fila.acc.errors %} is-invalid{% endif %}"><label class="of-label" for="{{ fila.acc.id_for_label }}">Acción</label>{{ fila.acc }}
+            {% for e in fila.acc.errors %}<span class="of-error">{{ e }}</span>{% endfor %}</div></div>
+        </div>
+        <div class="of-field mt-2 mb-2{% if fila.txt.errors %} is-invalid{% endif %}">{{ fila.txt }}
+          {% for e in fila.txt.errors %}<span class="of-error">{{ e }}</span>{% endfor %}</div>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="of-btn of-btn-sm of-btn-ng" data-quitar>Quitar</button>
+          <button type="button" class="of-btn of-btn-sm" data-listo>Listo</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="rs-tarea rs-auto" id="rs-auto" hidden>
+      <span class="rs-chip">Almacén</span><b>Recepcionar la reposición</b><span class="of-muted">Automática: se completa sola cuando Almacén recibe la orden.</span>
+    </div>
+
+    <button type="button" class="rs-nueva" id="rs-mas" hidden>+ Añadir nueva tarea</button>
+
+    <div class="mt-3" id="rs-repo-bloque" hidden>
+      <label class="rs-repo-chk" id="rs-repo-chk-label" hidden><input type="checkbox" id="rs-repo"> Generar una orden de reposición (sin email al proveedor)</label>
+      <div class="of-field mt-2{% if form.unidades_reposicion.errors %} is-invalid{% endif %}" id="rs-unidades" style="max-width:320px">
+        <label class="of-label" for="{{ form.unidades_reposicion.id_for_label }}">Unidades a reponer</label>
+        <div class="of-input-group"><span class="of-addon">{{ incidencia.linea.unidad_medida.nombre }}</span>{{ form.unidades_reposicion }}</div>
+        <span class="of-muted" style="font-size:12px">Se crea una orden de tipo «incidencia» enlazada a {{ orden.codigo }}.</span>
+        {% for e in form.unidades_reposicion.errors %}<span class="of-error"><svg class="of-ico"><use href="#i-alert"/></svg>{{ e }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4">
+    <span class="of-muted" style="font-size:12px">Nada llega a los departamentos hasta que el Administrador apruebe la medida.</span>
+    <button type="submit" class="of-btn of-btn-primary">Enviar a aprobación</button>
+  </div>
+</form>
+<script>
+(function () {
+  var f = document.getElementById("form-resolucion");
+  if (!f) return;
+  var filas = f.querySelectorAll("[data-tarea]"), mas = document.getElementById("rs-mas"), vacio = document.getElementById("rs-vacio");
+  var inRes = f.querySelector('input[name$="resolucion"]'), inPre = f.querySelector('input[name$="-preset"]');
+  var repone = f.getAttribute("data-repone").split(","), chk = document.getElementById("rs-repo");
+  var chkLabel = document.getElementById("rs-repo-chk-label"), bloqueRepo = document.getElementById("rs-repo-bloque"), auto = document.getElementById("rs-auto");
+  var presets = f.querySelectorAll("[data-clave]"), actual = f.getAttribute("data-preset-actual");
+
+  function q(t, s) { return t.querySelector(s); }
+  function vacia(t) { return !q(t, "[data-dep]").value && !q(t, "[data-acc]").value && !q(t, "textarea").value.trim(); }
+  function filtrar(t) {                       // el desplegable solo ofrece las acciones del departamento elegido
+    var dep = q(t, "[data-dep]").value;
+    q(t, "[data-acc]").querySelectorAll("optgroup").forEach(function (g) { var ok = !dep || g.label === dep; g.hidden = !ok; g.disabled = !ok; });
+    var acc = q(t, "[data-acc]"), sel = acc.options[acc.selectedIndex];
+    if (sel && sel.parentNode.tagName === "OPTGROUP" && sel.parentNode.disabled) acc.value = "";
+  }
+  function resumen(t) {
+    var acc = q(t, "[data-acc]");
+    q(t, "[data-r-dep]").textContent = q(t, "[data-dep]").value || "¿Quién?";
+    q(t, "[data-r-acc]").textContent = acc.value ? acc.options[acc.selectedIndex].text : "Elige la acción";
+    q(t, "[data-r-txt]").textContent = q(t, "textarea").value.trim();
+  }
+  function abrir(t, si) { q(t, "[data-resumen]").hidden = si; q(t, "[data-edicion]").hidden = !si; if (!si) resumen(t); }
+  function ocultasHay() { return Array.prototype.some.call(filas, function (t) { return t.hidden; }); }
+
+  function sincronizar() {
+    var pers = inPre.value === "personalizado";
+    if (pers) inRes.value = chk.checked ? "otra_reponer" : "otra";
+    var rep = repone.indexOf(inRes.value) >= 0;
+    var hay = !!inPre.value;
+    vacio.hidden = hay;
+    mas.hidden = !hay || !ocultasHay();
+    chkLabel.hidden = !pers;
+    bloqueRepo.hidden = !(pers || rep);
+    document.getElementById("rs-unidades").hidden = !rep;
+    auto.hidden = !rep;
+    presets.forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-clave") === inPre.value ? "true" : "false"); });
+  }
+  function personalizar() {                    // tocar cualquier tarea convierte la solución en «Personalizado» (conservando la reposición)
+    if (inPre.value === "personalizado") return;
+    chk.checked = repone.indexOf(inRes.value) >= 0;
+    inPre.value = "personalizado";
+    sincronizar();
+  }
+  function aplicar(btn) {
+    var clave = btn.getAttribute("data-clave");
+    if (clave === "personalizado") {
+      personalizar_desde_boton();
+      return;
+    }
+    var p = JSON.parse(btn.getAttribute("data-preset"));
+    inPre.value = clave; inRes.value = p.resolucion;
+    filas.forEach(function (t, i) {
+      var d = p.tareas[i];
+      q(t, "[data-dep]").value = d ? d.dep : ""; filtrar(t);
+      q(t, "[data-acc]").value = d ? d.acc : "";
+      q(t, "textarea").value = d ? d.texto : "";
+      t.hidden = !d; abrir(t, false);
+    });
+    sincronizar();
+  }
+  function personalizar_desde_boton() {
+    chk.checked = repone.indexOf(inRes.value) >= 0;
+    inPre.value = "personalizado";
+    var visibles = Array.prototype.filter.call(filas, function (t) { return !t.hidden; });
+    if (!visibles.length) { filas[0].hidden = false; abrir(filas[0], true); }
+    sincronizar();
+  }
+
+  filas.forEach(function (t) {
+    filtrar(t); resumen(t);
+    var tieneError = !!t.querySelector(".is-invalid");
+    t.hidden = vacia(t) && !tieneError;
+    if (!t.hidden) abrir(t, tieneError);
+    q(t, "[data-resumen]").addEventListener("click", function () { personalizar(); abrir(t, true); });
+    q(t, "[data-resumen]").addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); personalizar(); abrir(t, true); } });
+    q(t, "[data-dep]").addEventListener("change", function () { filtrar(t); personalizar(); });
+    q(t, "[data-acc]").addEventListener("change", personalizar);
+    q(t, "textarea").addEventListener("input", personalizar);
+    q(t, "[data-listo]").addEventListener("click", function () { abrir(t, false); });
+    q(t, "[data-quitar]").addEventListener("click", function () {
+      personalizar();
+      q(t, "[data-dep]").value = ""; filtrar(t); q(t, "[data-acc]").value = ""; q(t, "textarea").value = "";
+      t.hidden = true; sincronizar();
+    });
+  });
+  presets.forEach(function (b) { b.addEventListener("click", function () { aplicar(b); }); });
+  mas.addEventListener("click", function () {
+    personalizar();
+    for (var i = 0; i < filas.length; i++) { if (filas[i].hidden) { filas[i].hidden = false; abrir(filas[i], true); break; } }
+    sincronizar();
+  });
+  chk.addEventListener("change", sincronizar);
+  if (actual === "personalizado" && inRes.value === "otra_reponer") chk.checked = true;
+  sincronizar();
+})();
+</script>
