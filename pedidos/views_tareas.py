@@ -33,7 +33,9 @@ def tarea_lista(request):
     tareas = list(consulta)
     for t in tareas:
         t.etiqueta = etiqueta_accion(t.accion)
-        t.nueva = t.estado == "pendiente" and t.visible_desde is not None and t.visible_desde > anterior
+        # el aviso es para los demás: lo que creas tú no cuenta, y el Administrador libera las tareas al aprobarlas
+        t.nueva = (t.estado == "pendiente" and t.visible_desde is not None and t.visible_desde > anterior
+                   and t.creada_por_id != request.user.id and rol != "Administrador")
         t.orden = t.incidencia.linea.orden
     return render(request, "pedidos/tareas/lista.html", {
         "titulo": f"Tareas · {rol}",

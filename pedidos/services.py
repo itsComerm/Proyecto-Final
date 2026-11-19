@@ -340,7 +340,9 @@ def marcar_visita(usuario, seccion):
 
 
 def novedades_menu(usuario, rol):
-    """{nombre de URL: True} para las secciones con algo nuevo desde la última visita (el contador no lo detecta:
+    """El aviso es para los demás: lo que haces tú no cuenta (ni los mensajes ni las tareas que creaste; el Administrador
+    libera las tareas al aprobarlas, así que tampoco se avisa a sí mismo).
+    {nombre de URL: True} para las secciones con algo nuevo desde la última visita (el contador no lo detecta:
     si una tarea se cierra y otra se abre, el número no cambia)."""
     visitas = dict(VisitaSeccion.objects.filter(usuario=usuario).values_list("seccion", "ultima_visita"))
     base = usuario.date_joined
@@ -348,8 +350,9 @@ def novedades_menu(usuario, rol):
     if rol in ROLES_TICKET:
         novedades["incidencia_lista"] = (MensajeIncidencia.objects.filter(fecha__gt=visitas.get("incidencias", base))
                                          .exclude(autor=usuario).exists())
-    novedades["tarea_lista"] = Tarea.objects.filter(
-        estado="pendiente", departamento=rol, visible_desde__gt=visitas.get("tareas", base)).exists()
+    novedades["tarea_lista"] = (rol != "Administrador" and Tarea.objects.filter(
+        estado="pendiente", departamento=rol, visible_desde__gt=visitas.get("tareas", base))
+        .exclude(creada_por=usuario).exists())
     return novedades
 
 
